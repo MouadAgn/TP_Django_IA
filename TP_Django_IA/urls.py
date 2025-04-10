@@ -6,7 +6,9 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),
-    path('', include('generator.urls')),
+    path('api/', include('generator.urls')), # Base de l'API
+    path('', include('generator.urls')), # Base du frontend
+
 ]
 
 # Ajout des fichiers statiques en développement

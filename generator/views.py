@@ -18,6 +18,9 @@ from io import BytesIO
 from PIL import Image
 from django.conf import settings
 import uuid
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -41,7 +44,7 @@ class GameConceptSerializer(serializers.ModelSerializer):
         model = GameConcept
         fields = '__all__'
 
-class GameGeneratorViewSet(viewsets.ModelViewSet):
+class GameGeneratorViewSet(LoginRequiredMixin, viewsets.ModelViewSet):
     queryset = GameConcept.objects.all()
     serializer_class = GameConceptSerializer
 
@@ -209,12 +212,16 @@ class GameGeneratorViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def generate_game(self, request):
+        # Utilisation directe de l'utilisateur connecté
+        data = request.data.copy()
+        data['user'] = request.user.id
+        
         # Récupération des données du formulaire
-        game_genre = request.data.get('game_genre')
-        visual_atmosphere = request.data.get('visual_atmosphere')
-        thematic_keywords = request.data.get('thematic_keywords')
-        cultural_references = request.data.get('cultural_references', '')
-        language = request.data.get('language', 'fr')  # fr par défaut
+        game_genre = data.get('game_genre')
+        visual_atmosphere = data.get('visual_atmosphere')
+        thematic_keywords = data.get('thematic_keywords')
+        cultural_references = data.get('cultural_references', '')
+        language = data.get('language', 'fr')
 
         # Création du prompt pour Mistral
         prompt = f"""[INST]Tu es un expert en game design. Génère un concept de jeu vidéo détaillé avec les éléments suivants:
@@ -335,23 +342,21 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             )
 
 # Vues Frontend
+@login_required
 def home(request):
     """Vue de la page d'accueil"""
-    # Récupérer tous les jeux
-    games_list = GameConcept.objects.all().order_by('-id')
+    # Récupérer les jeux de l'utilisateur connecté uniquement
+    games_list = GameConcept.objects.filter(user=request.user).order_by('-id')
     
     # Créer un paginator avec 1 jeu par page
-    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    paginator = Paginator(games_list, 1)
     page = request.GET.get('page', 1)
     
     try:
-        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
         page_obj = paginator.page(page)
     except PageNotAnInteger:
-        # Si la page n'est pas un entier, afficher la première page
         page_obj = paginator.page(1)
     except EmptyPage:
-        # Si la page est hors limites, afficher la dernière page
         page_obj = paginator.page(paginator.num_pages)
     
     context = {
@@ -363,6 +368,7 @@ def home(request):
     
     return render(request, 'home.html', context)
 
+@login_required
 def generate_game_view(request):
     """Vue pour générer un nouveau jeu"""
     if request.method == 'POST':
@@ -374,81 +380,9 @@ def generate_game_view(request):
             cultural_references = request.POST.get('cultural_references', '')
             language = request.POST.get('language', 'fr')
 
-            # Appel à l'API pour générer le jeu
-            response = requests.post(
-                'http://127.0.0.1:8000/api/games/generate_game/',
-                json={
-                    'game_genre': game_genre,
-                    'visual_atmosphere': visual_atmosphere,
-                    'thematic_keywords': thematic_keywords,
-                    'cultural_references': cultural_references,
-                    'language': language
-                }
-            )
-            
-            if response.status_code == 201:
-                game_data = response.json()
-                # Passer l'ID du jeu créé dans le contexte de succès
-                return render(request, 'success.html', {
-                    'game_id': game_data['id'],
-                    'game_genre': game_data['game_genre']
-                })
-            else:
-                return render(request, 'generate_game.html', {
-                    'error': 'Une erreur est survenue lors de la génération du jeu.'
-                })
-                
-        except Exception as e:
-            return render(request, 'generate_game.html', {
-                'error': str(e)
-            })
-            
-    return render(request, 'generate_game.html')
-
-def game_detail(request, game_id):
-    """Vue détaillée d'un jeu"""
-    game = get_object_or_404(GameConcept, id=game_id)
-    return render(request, 'game_detail.html', {'game': game})
-
-# Vues Frontend
-def home(request):
-    """Vue de la page d'accueil"""
-    # Récupérer tous les jeux
-    games_list = GameConcept.objects.all().order_by('-id')
-    
-    # Créer un paginator avec 1 jeu par page
-    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
-    page = request.GET.get('page', 1)
-    
-    try:
-        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
-        page_obj = paginator.page(page)
-    except PageNotAnInteger:
-        # Si la page n'est pas un entier, afficher la première page
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        # Si la page est hors limites, afficher la dernière page
-        page_obj = paginator.page(paginator.num_pages)
-    
-    context = {
-        'page_obj': page_obj,
-        'total_games': games_list.count(),
-        'current_page': page,
-        'total_pages': paginator.num_pages,
-    }
-    
-    return render(request, 'home.html', context)
-
-def generate_game_view(request):
-    """Vue pour générer un nouveau jeu"""
-    if request.method == 'POST':
-        try:
-            # Récupération des données du formulaire
-            game_genre = request.POST.get('game_genre')
-            visual_atmosphere = request.POST.get('visual_atmosphere')
-            thematic_keywords = request.POST.get('thematic_keywords')
-            cultural_references = request.POST.get('cultural_references', '')
-            language = request.POST.get('language', 'fr')
+            # Récupération du cookie de session et du token CSRF
+            session_cookie = request.COOKIES.get('sessionid')
+            csrf_token = request.COOKIES.get('csrftoken')
 
             # Appel à l'API pour générer le jeu
             response = requests.post(
@@ -458,20 +392,25 @@ def generate_game_view(request):
                     'visual_atmosphere': visual_atmosphere,
                     'thematic_keywords': thematic_keywords,
                     'cultural_references': cultural_references,
-                    'language': language
+                    'language': language,
+                    'user': request.user.id
+                },
+                headers={
+                    'X-CSRFToken': csrf_token,
+                    'Cookie': f'sessionid={session_cookie}; csrftoken={csrf_token}',
+                    'Referer': 'http://127.0.0.1:8000'
                 }
             )
             
             if response.status_code == 201:
                 game_data = response.json()
-                # Passer l'ID du jeu créé dans le contexte de succès
                 return render(request, 'success.html', {
                     'game_id': game_data['id'],
                     'game_genre': game_data['game_genre']
                 })
             else:
                 return render(request, 'generate_game.html', {
-                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                    'error': f'Une erreur est survenue lors de la génération du jeu. Status: {response.status_code}, Message: {response.text}'
                 })
                 
         except Exception as e:
@@ -481,9 +420,11 @@ def generate_game_view(request):
             
     return render(request, 'generate_game.html')
 
+@login_required
 def game_detail(request, game_id):
     """Vue détaillée d'un jeu"""
-    game = get_object_or_404(GameConcept, id=game_id)
+    # Récupérer uniquement les jeux de l'utilisateur connecté
+    game = get_object_or_404(GameConcept, id=game_id, user=request.user)
     return render(request, 'game_detail.html', {'game': game})
 
 from django.shortcuts import render, get_object_or_404
@@ -512,6 +453,7 @@ def query(payload):
     else:
         raise Exception(f"API Error: {response.status_code}, {response.text}")
     
+@login_required
 def homepage(request):
     context = {}
     try:
