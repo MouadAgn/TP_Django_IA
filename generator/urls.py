@@ -1,6 +1,10 @@
-from django.urls import path
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import GameGeneratorViewSet
+
+router = DefaultRouter()
+router.register(r'games', GameGeneratorViewSet)
 
 urlpatterns = [
-    path('', views.homepage, name="homepage"),
-]
+    path('', include(router.urls)),
+] 
