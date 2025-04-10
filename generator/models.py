@@ -8,6 +8,12 @@ class GameConcept(models.Model):
     visual_atmosphere = models.CharField(max_length=100)
     thematic_keywords = models.CharField(max_length=200)
     cultural_references = models.CharField(max_length=200, blank=True, null=True)
+    language = models.CharField(max_length=50, default='fr', choices=[
+        ('fr', 'Français'),
+        ('en', 'English'),
+        ('es', 'Español'),
+        ('de', 'Deutsch')
+    ])
     
     # Champs générés par l'IA
     universe_description = models.TextField()
