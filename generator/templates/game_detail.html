@@ -15,6 +15,7 @@
             <div class="nav-links">
                 <a href="{% url 'generator:home' %}">Accueil</a>
                 <a href="{% url 'generator:generate_game' %}">Générer une histoire</a>
+                <a href="{% url 'profile' %}">Profile</a>
             </div>
         </div>
     </nav>
@@ -91,6 +92,13 @@
                     {% endfor %}
                 </div>
             </div>
+
+            <div class="creator-info">
+                <p class="creator">
+                    <span class="creator-label">Créé par:</span>
+                    <span class="creator-name">{{ game.user.username }}</span>
+                </p>
+            </div>
         </article>
     </main>
 
@@ -99,5 +107,42 @@
             <p>&copy; 2025 Game Story Generator. Tous droits réservés.</p>
         </div>
     </footer>
+
+    <style>
+        .creator-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(0, 255, 157, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #00ff9d;
+        }
+
+        .creator {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .creator-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+        }
+
+        .creator-name {
+            color: #00ff9d;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        .creator-name:hover {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
+            transition: all 0.3s ease;
+        }
+    </style>
 </body>
 </html> 

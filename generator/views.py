@@ -409,8 +409,8 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
 @login_required
 def home(request):
     """Vue de la page d'accueil"""
-    # Récupérer les jeux de l'utilisateur connecté uniquement
-    games_list = GameConcept.objects.filter(user=request.user).order_by('-id')
+    # Récupérer tous les jeux de la base de données avec les informations de l'utilisateur
+    games_list = GameConcept.objects.select_related('user').all().order_by('-created_at')
     
     # Créer un paginator avec 1 jeu par page
     paginator = Paginator(games_list, 1)
@@ -422,6 +422,10 @@ def home(request):
         page_obj = paginator.page(1)
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
+    
+    # Pour chaque jeu, on ajoute le pseudo du créateur
+    for game in page_obj:
+        game.creator_username = game.user.username
     
     context = {
         'page_obj': page_obj,
@@ -487,9 +491,14 @@ def generate_game_view(request):
 @login_required
 def game_detail(request, game_id):
     """Vue détaillée d'un jeu"""
-    # Récupérer uniquement les jeux de l'utilisateur connecté
-    game = get_object_or_404(GameConcept, id=game_id, user=request.user)
-    return render(request, 'game_detail.html', {'game': game})
+    # Récupérer le jeu sans filtrer par utilisateur
+    game = get_object_or_404(GameConcept, id=game_id)
+    # Ajouter le nom du créateur au contexte
+    creator_username = game.user.username
+    return render(request, 'game_detail.html', {
+        'game': game,
+        'creator_username': creator_username
+    })
 
 from django.shortcuts import render, get_object_or_404
 import requests
