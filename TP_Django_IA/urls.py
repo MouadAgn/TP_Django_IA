@@ -8,8 +8,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('api/', include('generator.urls')), # Base de l'API
     path('', include('generator.urls')), # Base du frontend
-
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Ajout des fichiers statiques en développement
 if settings.DEBUG:

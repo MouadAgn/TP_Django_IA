@@ -39,10 +39,14 @@ class LocationSerializer(serializers.ModelSerializer):
 class GameConceptSerializer(serializers.ModelSerializer):
     characters = CharacterSerializer(many=True, read_only=True)
     locations = LocationSerializer(many=True, read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = GameConcept
-        fields = '__all__'
+        fields = ['id', 'game_genre', 'visual_atmosphere', 'thematic_keywords', 
+                 'cultural_references', 'language', 'universe_description', 
+                 'story_act_1', 'story_act_2', 'story_act_3', 'created_at', 
+                 'updated_at', 'user', 'characters', 'locations', 'image']
 
 class GameGeneratorViewSet(LoginRequiredMixin, viewsets.ModelViewSet):
     queryset = GameConcept.objects.all()
@@ -307,18 +311,78 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             # Parse la réponse
             parsed_response = self.parse_ai_response(generated_text)
             
-            # Création du concept de jeu
-            game_concept = GameConcept.objects.create(
-                game_genre=game_genre,
-                visual_atmosphere=visual_atmosphere,
-                thematic_keywords=thematic_keywords,
-                cultural_references=cultural_references,
-                language=language,
-                universe_description=parsed_response["universe_description"],
-                story_act_1=parsed_response["story_acts"][0],
-                story_act_2=parsed_response["story_acts"][1],
-                story_act_3=parsed_response["story_acts"][2]
-            )
+            # Génération de l'image avec Stable Diffusion
+            image_prompt = f"A video game scene featuring {game_genre} style, with {visual_atmosphere} atmosphere, including elements of {thematic_keywords}"
+            image_api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+            image_headers = {
+                "Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_TOKEN')}"
+            }
+            
+            try:
+                # Appel à l'API Stable Diffusion avec retry
+                max_retries = 5  # Augmentation du nombre de tentatives
+                retry_delay = 5  # Augmentation du délai entre les tentatives
+                
+                for attempt in range(max_retries):
+                    try:
+                        image_response = requests.post(
+                            image_api_url,
+                            headers=image_headers,
+                            json={"inputs": image_prompt}
+                        )
+                        
+                        if image_response.status_code == 200:
+                            # Créer le dossier media/concept s'il n'existe pas
+                            os.makedirs('media/concept', exist_ok=True)
+                            
+                            # Générer un nom de fichier unique
+                            image_filename = f"game_{int(time.time())}.png"
+                            image_path = f"concept/{image_filename}"
+                            
+                            # Sauvegarder l'image
+                            with open(f"media/{image_path}", "wb") as f:
+                                f.write(image_response.content)
+                            break
+                        elif image_response.status_code == 503:
+                            if attempt < max_retries - 1:
+                                print(f"Service indisponible, nouvelle tentative dans {retry_delay} secondes...")
+                                time.sleep(retry_delay)
+                                retry_delay *= 2  # Augmentation progressive du délai
+                                continue
+                            else:
+                                image_path = None
+                                print(f"Erreur génération image après {max_retries} tentatives: {image_response.status_code}, {image_response.text}")
+                        else:
+                            image_path = None
+                            print(f"Erreur génération image: {image_response.status_code}, {image_response.text}")
+                            break
+                    except Exception as e:
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            continue
+                        image_path = None
+                        print(f"Erreur génération image: {str(e)}")
+                        break
+            except Exception as e:
+                image_path = None
+                print(f"Erreur génération image: {str(e)}")
+
+            # Création du concept de jeu avec l'image
+            game_data = {
+                'game_genre': game_genre,
+                'visual_atmosphere': visual_atmosphere,
+                'thematic_keywords': thematic_keywords,
+                'cultural_references': cultural_references,
+                'language': language,
+                'universe_description': parsed_response["universe_description"],
+                'story_act_1': parsed_response["story_acts"][0],
+                'story_act_2': parsed_response["story_acts"][1],
+                'story_act_3': parsed_response["story_acts"][2],
+                'user': request.user,
+                'image': image_path
+            }
+            
+            game_concept = GameConcept.objects.create(**game_data)
             
             # Création des personnages
             for character_text in parsed_response["characters"]:
