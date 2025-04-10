@@ -2,6 +2,8 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser
+from rest_framework.views import APIView
 from .models import GameConcept, Character, Location
 from rest_framework import serializers
 import requests
@@ -9,6 +11,12 @@ import json
 import os
 from dotenv import load_dotenv
 import time
+from django.shortcuts import get_object_or_404
+import base64
+from io import BytesIO
+from PIL import Image
+from django.conf import settings
+import uuid
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -320,19 +328,66 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-from django.shortcuts import render, get_object_or_404
-import requests
-import base64
-from io import BytesIO
-from PIL import Image
-import os
-from dotenv import load_dotenv
-from django.conf import settings
-import uuid
-from .models import Character  # Assuming Character is the model for characters
+    @action(detail=False, methods=['post'], parser_classes=[JSONParser])
+    def generate_image(self, request):
+        """Generate images for a GameConcept and its associated Characters."""
+        game_concept_id = request.data.get("game_concept_id")
+        if not game_concept_id:
+            return Response({"error": "GameConcept ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-# Load environment variables from .env file
-load_dotenv()
+        try:
+            # Retrieve the GameConcept from the database
+            game_concept = get_object_or_404(GameConcept, id=game_concept_id)
+
+            # Generate an image for the GameConcept
+            game_prompt = f"Generate an artistic representation of a game concept with the following details:\n" \
+                          f"Genre: {game_concept.game_genre}\n" \
+                          f"Visual Atmosphere: {game_concept.visual_atmosphere}\n" \
+                          f"Universe Description: {game_concept.universe_description}"
+            game_image_bytes = query({"inputs": game_prompt})
+
+            # Save the GameConcept image
+            game_image = Image.open(BytesIO(game_image_bytes))
+            game_image_name = f"game_{uuid.uuid4()}.png"
+            game_image_path = os.path.join(settings.MEDIA_ROOT, game_image_name)
+            game_image.save(game_image_path)
+            game_concept.image = f"{settings.MEDIA_URL}{game_image_name}"
+            game_concept.save()
+
+            # Generate images for each associated Character
+            character_images = []
+            for character in game_concept.characters.all():
+                character_prompt = f"Generate a character design with the following details:\n" \
+                                   f"Name: {character.name}\n" \
+                                   f"Class: {character.character_class}\n" \
+                                   f"Narrative Role: {character.narrative_role}\n" \
+                                   f"Background: {character.background}\n" \
+                                   f"Gameplay Description: {character.gameplay_description}"
+                character_image_bytes = query({"inputs": character_prompt})
+
+                # Save the Character image
+                character_image = Image.open(BytesIO(character_image_bytes))
+                character_image_name = f"character_{uuid.uuid4()}.png"
+                character_image_path = os.path.join(settings.MEDIA_ROOT, character_image_name)
+                character_image.save(character_image_path)
+                character.image = f"{settings.MEDIA_URL}{character_image_name}"
+                character.save()
+
+                character_images.append({
+                    "character_id": character.id,
+                    "image_url": f"{settings.MEDIA_URL}{character_image_name}"
+                })
+
+            # Return the generated image URLs
+            return Response(
+                {
+                    "game_concept_image_url": f"{settings.MEDIA_URL}{game_image_name}",
+                    "character_images": character_images,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")
 
@@ -345,44 +400,3 @@ def query(payload):
         return response.content
     else:
         raise Exception(f"API Error: {response.status_code}, {response.text}")
-
-def homepage(request):
-    context = {}
-    try:
-        if request.method == "POST":
-            # Récupérer le prompt de l'utilisateur
-            user_prompt = request.POST.get("prompt")
-            
-            # Générer l'image avec l'API
-            image_bytes = query({
-                "inputs": user_prompt,
-            })
-            
-            # Convertir l'image en Base64 pour l'afficher dans le template
-            image = Image.open(BytesIO(image_bytes))
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-            
-            # Enregistrer l'image dans le dossier media
-            image_name = f"{uuid.uuid4()}.png"
-            image_path = os.path.join(settings.MEDIA_ROOT, image_name)
-            image.save(image_path)
-
-            # Insérer l'image dans la base de données pour le character avec id=1
-            character = get_object_or_404(Character, id=1)
-            character.image = f"{settings.MEDIA_URL}{image_name}"
-            character.save()
-
-            # Passer l'image en Base64, le chemin de l'image et le prompt au contexte
-            context["image_base64"] = image_base64
-            context["image_path"] = f"{settings.MEDIA_URL}{image_name}"
-            context["user_prompt"] = user_prompt
-            
-        else:
-            pass
-        
-    except Exception as e:
-        context["error"] = str(e)
-    
-    return render(request, "homepage.html", context)

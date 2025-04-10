@@ -1,5 +1,10 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
+<head>
+    <link rel="stylesheet" href="{% static 'users/register.css' %}">
+</head>
 
 <body>
     <h1>Register</h1>
@@ -7,6 +12,9 @@
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Register</button>
+        <a href="{% url 'login' %}">
+            <button type="button">Login</button>
+        </a>
     </form>
 </body>
 

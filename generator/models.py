@@ -12,6 +12,7 @@ class GameConcept(models.Model):
     
     # Champs générés par l'IA
     universe_description = models.TextField()
+    image = models.ImageField(upload_to='concept/', blank=True, null=True)
     story_act_1 = models.TextField()
     story_act_2 = models.TextField()
     story_act_3 = models.TextField()

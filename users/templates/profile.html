@@ -1,14 +1,25 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
+
+<head>
+    <link rel="stylesheet" href="{% static 'users/profile.css' %}">
+</head>
 
 <body>
     <h1>Welcome, {{ user.username }}</h1>
     <a href="{% url 'logout' %}">Logout</a>
 
+    <!-- Show debug with username & game_concepts -->
+    <!-- <h2>Debug Information</h2> -->
+    <!-- <p>Username: {{ user.username }}</p> -->
+    <!-- <p>Game Concepts: {{ game_concepts }}</p> -->
+
     <h2>Your Game Concepts</h2>
     <ul>
         {% for concept in game_concepts %}
-        <li>{{ concept.name }}: {{ concept.description }}</li>
+        <li>{{ concept.game_genre }}: {{ concept.visual_atmosphere }}</li>
         {% empty %}
         <li>No game concepts found.</li>
         {% endfor %}
