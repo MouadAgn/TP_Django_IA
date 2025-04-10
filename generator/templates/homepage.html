@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+</head>
+
+<body>
+    <h1>Generated Image</h1>
+
+    <!-- Formulaire pour entrer un prompt -->
+    <form method="POST">
+        {% csrf_token %}
+        <label for="prompt">Enter your prompt:</label>
+        <input type="text" id="prompt" name="prompt" value="{{ user_prompt|default:'' }}" required>
+        <button type="submit">Generate</button>
+    </form>
+
+    {% if error %}
+    <p>{{ error }}</p>
+    {% elif image_base64 %}
+    <img src="data:image/png;base64,{{ image_base64 }}" alt="Generated Image">
+    {% else %}
+    <p>No image available.</p>
+    {% endif %}
+</body>
+
+</html>
