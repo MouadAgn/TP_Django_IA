@@ -4,6 +4,15 @@
 <body>
     <h1>Welcome, {{ user.username }}</h1>
     <a href="{% url 'logout' %}">Logout</a>
+
+    <h2>Your Game Concepts</h2>
+    <ul>
+        {% for concept in game_concepts %}
+        <li>{{ concept.name }}: {{ concept.description }}</li>
+        {% empty %}
+        <li>No game concepts found.</li>
+        {% endfor %}
+    </ul>
 </body>
 
 </html>

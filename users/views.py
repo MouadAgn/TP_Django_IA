@@ -31,7 +31,8 @@ def login_view(request):
 
 @login_required
 def profile(request):
-    return render(request, 'profile.html')
+    game_concepts = request.user.game_concepts.all()
+    return render(request, 'profile.html', {'game_concepts': game_concepts})
 
 def logout_view(request):
     logout(request)
