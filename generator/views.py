@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
 from rest_framework.views import APIView
-from .models import GameConcept, Character, Location
+from .models import GameConcept, Character, Location, Favorite
 from rest_framework import serializers
 import requests
 import json
@@ -21,6 +21,16 @@ import uuid
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse, HttpResponse, FileResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.units import inch, cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from datetime import datetime
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -491,13 +501,11 @@ def generate_game_view(request):
 @login_required
 def game_detail(request, game_id):
     """Vue détaillée d'un jeu"""
-    # Récupérer le jeu sans filtrer par utilisateur
     game = get_object_or_404(GameConcept, id=game_id)
-    # Ajouter le nom du créateur au contexte
-    creator_username = game.user.username
+    is_favorite = Favorite.objects.filter(user=request.user, game=game).exists()
     return render(request, 'game_detail.html', {
         'game': game,
-        'creator_username': creator_username
+        'is_favorite': is_favorite
     })
 
 from django.shortcuts import render, get_object_or_404
@@ -567,3 +575,187 @@ def homepage(request):
         context["error"] = str(e)
     
     return render(request, "homepage.html", context)
+
+@login_required
+def favorites(request):
+    """Vue pour afficher les favoris de l'utilisateur"""
+    favorites = Favorite.objects.filter(user=request.user).select_related('game', 'game__user').order_by('-created_at')
+    return render(request, 'favorites.html', {'favorites': favorites})
+
+@login_required
+def toggle_favorite(request, game_id):
+    """Vue pour ajouter/retirer un jeu des favoris"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    favorite, created = Favorite.objects.get_or_create(user=request.user, game=game)
+    
+    if not created:
+        favorite.delete()
+        is_favorite = False
+    else:
+        is_favorite = True
+    
+    return JsonResponse({'is_favorite': is_favorite})
+
+def export_pdf(request, game_id):
+    try:
+        game = GameConcept.objects.get(id=game_id)
+        buffer = BytesIO()
+        
+        # Configuration du document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=1.5*cm,
+            leftMargin=1.5*cm,
+            topMargin=1.5*cm,
+            bottomMargin=1.5*cm
+        )
+        
+        # Styles personnalisés
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=28,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1a1a2e'),
+            alignment=1,  # Centré
+            fontName='Helvetica-Bold'
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=18,
+            spaceAfter=20,
+            textColor=colors.HexColor('#16213e'),
+            alignment=1,  # Centré
+            fontName='Helvetica-Bold'
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            spaceBefore=15,
+            spaceAfter=10,
+            textColor=colors.HexColor('#1a1a2e'),
+            fontName='Helvetica-Bold',
+            borderPadding=(10, 10, 10, 10),
+            borderWidth=1,
+            borderColor=colors.HexColor('#e1e1e1'),
+            borderRadius=5
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=12,
+            spaceAfter=12,
+            textColor=colors.HexColor('#333333'),
+            fontName='Helvetica',
+            leading=16
+        )
+        
+        info_style = ParagraphStyle(
+            'InfoStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#666666'),
+            alignment=2  # Aligné à droite
+        )
+
+        # Contenu
+        elements = []
+        
+        # En-tête avec date
+        date_str = datetime.now().strftime("%d/%m/%Y")
+        elements.append(Paragraph(f"Game Story Generator - {date_str}", info_style))
+        elements.append(Spacer(1, 20))
+        
+        # Titre et genre
+        elements.append(Paragraph(game.game_genre.upper(), title_style))
+        elements.append(Paragraph(f"Ambiance : {game.visual_atmosphere}", subtitle_style))
+        elements.append(Spacer(1, 30))
+        
+        # Description de l'univers
+        elements.append(Paragraph("Description de l'univers", heading_style))
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(game.universe_description, normal_style))
+        elements.append(Spacer(1, 20))
+        
+        # Personnages
+        elements.append(Paragraph("Personnages", heading_style))
+        elements.append(Spacer(1, 10))
+        
+        # Tableau des personnages
+        characters_data = [[Paragraph("<b>Nom</b>", normal_style), 
+                          Paragraph("<b>Classe</b>", normal_style)]]
+        for character in game.characters.all():
+            characters_data.append([
+                Paragraph(character.name, normal_style),
+                Paragraph(character.character_class, normal_style)
+            ])
+            
+        characters_table = Table(characters_data, colWidths=[doc.width/2.0]*2)
+        characters_table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e1e1e1')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5f5f5')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#333333')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 11),
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+        ]))
+        elements.append(characters_table)
+        elements.append(Spacer(1, 20))
+        
+        # Lieux
+        elements.append(Paragraph("Lieux principaux", heading_style))
+        elements.append(Spacer(1, 10))
+        locations_list = []
+        for location in game.locations.all():
+            locations_list.append(f"• {location.name}")
+        locations_text = "<br/>".join(locations_list)
+        elements.append(Paragraph(locations_text, normal_style))
+        elements.append(Spacer(1, 20))
+        
+        # Mots-clés thématiques
+        elements.append(Paragraph("Thèmes", heading_style))
+        elements.append(Spacer(1, 10))
+        keywords = game.thematic_keywords.split()
+        keywords_text = ", ".join([f"#{keyword}" for keyword in keywords])
+        elements.append(Paragraph(keywords_text, normal_style))
+        
+        # Pied de page
+        elements.append(Spacer(1, 40))
+        elements.append(Paragraph(
+            "Document généré automatiquement par Game Story Generator",
+            info_style
+        ))
+        
+        # Génération du PDF
+        doc.build(elements)
+        
+        # Préparation de la réponse
+        buffer.seek(0)
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename=f'game-story-{game_id}.pdf'
+        )
+
+    except GameConcept.DoesNotExist:
+        return HttpResponse(status=404)
+    except Exception as e:
+        print(f"Erreur lors de la génération du PDF: {str(e)}")
+        return HttpResponse(status=500)

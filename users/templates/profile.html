@@ -224,8 +224,8 @@
         <div class="nav-container">
             <h1 class="logo">Game Story Generator</h1>
             <div class="nav-links">
-                <a href="{% url 'generator:home' %}">Accueil</a>
-                <a href="{% url 'generator:generate_game' %}">Générer une histoire</a>
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'generate_game' %}">Générer une histoire</a>
                 <a href="{% url 'profile' %}" class="active">Profile</a>
                 <a href="{% url 'logout' %}">Déconnexion</a>
             </div>
@@ -292,7 +292,12 @@
                                 <span class="keyword-tag">{{ keyword }}</span>
                                 {% endfor %}
                             </div>
-                            <a href="{% url 'generator:game_detail' concept.id %}" class="details-btn">Voir plus</a>
+                            <div class="card-actions">
+                                <a href="{% url 'game_detail' concept.id %}" class="details-btn">Voir les détails</a>
+                                <button class="favorite-btn {% if concept.id in favorite_games %}active{% endif %}" data-game-id="{{ concept.id }}">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -332,6 +337,28 @@
             icon.classList.add('fa-chevron-down');
             text.textContent = 'Voir plus';
         }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.favorite-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const gameId = this.dataset.gameId;
+                toggleFavorite(gameId, this);
+            });
+        });
+    });
+
+    function toggleFavorite(gameId, button) {
+        fetch(`/api/toggle-favorite/${gameId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            button.classList.toggle('active', data.is_favorite);
+        });
     }
     </script>
 </body>
