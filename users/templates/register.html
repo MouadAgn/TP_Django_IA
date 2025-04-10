@@ -3,19 +3,30 @@
 <html lang="en">
 
 <head>
-    <link rel="stylesheet" href="{% static 'users/register.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
+
 </head>
 
 <body>
-    <h1>Register</h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
-        <a href="{% url 'login' %}">
-            <button type="button">Login</button>
-        </a>
-    </form>
+    <main class="container">
+        <section class="generate-form-section">
+            <h2>Register</h2>
+            <form method="post" class="generate-form">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Register</button>
+                    <a href="{% url 'login' %}" class="reset-btn">Login</a>
+                </div>
+            </form>
+        </section>
+    </main>
 </body>
 
 </html>

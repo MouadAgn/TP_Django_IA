@@ -1,29 +1,37 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <link rel="stylesheet" href="{% static 'users/profile.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
+
 </head>
 
 <body>
-    <h1>Welcome, {{ user.username }}</h1>
-    <a href="{% url 'logout' %}">Logout</a>
+    <main class="container">
+        <section class="generate-form-section">
+            <h2>Welcome, {{ user.username }}</h2>
+            <a href="{% url 'logout' %}" class="reset-btn">Logout</a>
 
-    <!-- Show debug with username & game_concepts -->
-    <!-- <h2>Debug Information</h2> -->
-    <!-- <p>Username: {{ user.username }}</p> -->
-    <!-- <p>Game Concepts: {{ game_concepts }}</p> -->
-
-    <h2>Your Game Concepts</h2>
-    <ul>
-        {% for concept in game_concepts %}
-        <li>{{ concept.game_genre }}: {{ concept.visual_atmosphere }}</li>
-        {% empty %}
-        <li>No game concepts found.</li>
-        {% endfor %}
-    </ul>
+            <h3>Your Game Concepts</h3>
+            <ul class="character-list" style="list-style: none;">
+                {% for concept in game_concepts %}
+                <li class="character-item">
+                    <h4>{{ concept.game_genre }}</h4>
+                    <p>{{ concept.visual_atmosphere }}</p>
+                </li>
+                {% empty %}
+                <li>No game concepts found.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
 </body>
 
 </html>

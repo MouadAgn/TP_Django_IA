@@ -1,0 +1,92 @@
+/* Général */
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    background-color: #0d1b2a;
+    /* fond bleu marine */
+    color: #ffffff;
+}
+
+.container {
+    max-width: 500px;
+    margin: 4rem auto;
+    padding: 2rem;
+}
+
+/* Section formulaire */
+.generate-form-section {
+    background-color: #1b263b;
+    /* fond plus clair pour le formulaire */
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+    padding: 2rem;
+}
+
+.generate-form-section h2 {
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+    text-align: center;
+    color: #ffffff;
+}
+
+/* Champs du formulaire */
+.generate-form p {
+    margin-bottom: 1.2rem;
+}
+
+.generate-form input,
+.generate-form select,
+.generate-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.3rem;
+    border: none;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background-color: #415a77;
+    color: #fff;
+}
+
+.generate-form input:focus {
+    outline: none;
+    background-color: #4f6785;
+}
+
+/* Boutons */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.submit-btn,
+.reset-btn {
+    padding: 0.8rem 1.6rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+}
+
+.submit-btn {
+    background-color: #00b4d8;
+    color: #0d1b2a;
+}
+
+.submit-btn:hover {
+    background-color: #0096c7;
+}
+
+.reset-btn {
+    background-color: #778da9;
+    color: #ffffff;
+}
+
+.reset-btn:hover {
+    background-color: #5c6b81;
+}

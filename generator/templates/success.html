@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Génération réussie - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="success-overlay">
+        <div class="success-message">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Histoire générée avec succès !</h2>
+            <p>Votre histoire de {{ game_genre }} a été créée et est prête à être explorée.</p>
+            <div class="success-actions">
+                <a href="{% url 'generator:game_detail' game_id %}" class="success-btn primary">
+                    Voir l'histoire
+                </a>
+                <a href="{% url 'generator:home' %}" class="success-btn secondary">
+                    Retour à l'accueil
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Redirection automatique après 5 secondes si l'utilisateur ne clique sur aucun bouton
+        setTimeout(function() {
+            window.location.href = "{% url 'generator:game_detail' game_id %}";
+        }, 5000);
+    </script>
+</body>
+</html> 

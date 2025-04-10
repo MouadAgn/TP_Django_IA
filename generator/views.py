@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -213,6 +214,7 @@ class GameGeneratorViewSet(viewsets.ModelViewSet):
         visual_atmosphere = request.data.get('visual_atmosphere')
         thematic_keywords = request.data.get('thematic_keywords')
         cultural_references = request.data.get('cultural_references', '')
+        language = request.data.get('language', 'fr')  # fr par défaut
 
         # Création du prompt pour Mistral
         prompt = f"""[INST]Tu es un expert en game design. Génère un concept de jeu vidéo détaillé avec les éléments suivants:
@@ -243,6 +245,9 @@ Background: [histoire du personnage]
 Gameplay: [style de jeu unique]
 
 PERSONNAGE 2:
+[Même format que personnage 1]
+
+PERSONNAGE 3:
 [Même format que personnage 1]
 
 LIEU 1:
@@ -301,6 +306,7 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
                 visual_atmosphere=visual_atmosphere,
                 thematic_keywords=thematic_keywords,
                 cultural_references=cultural_references,
+                language=language,
                 universe_description=parsed_response["universe_description"],
                 story_act_1=parsed_response["story_acts"][0],
                 story_act_2=parsed_response["story_acts"][1],
@@ -328,66 +334,171 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'], parser_classes=[JSONParser])
-    def generate_image(self, request):
-        """Generate images for a GameConcept and its associated Characters."""
-        game_concept_id = request.data.get("game_concept_id")
-        if not game_concept_id:
-            return Response({"error": "GameConcept ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+# Vues Frontend
+def home(request):
+    """Vue de la page d'accueil"""
+    # Récupérer tous les jeux
+    games_list = GameConcept.objects.all().order_by('-id')
+    
+    # Créer un paginator avec 1 jeu par page
+    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    page = request.GET.get('page', 1)
+    
+    try:
+        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        # Si la page n'est pas un entier, afficher la première page
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        # Si la page est hors limites, afficher la dernière page
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_games': games_list.count(),
+        'current_page': page,
+        'total_pages': paginator.num_pages,
+    }
+    
+    return render(request, 'home.html', context)
 
+def generate_game_view(request):
+    """Vue pour générer un nouveau jeu"""
+    if request.method == 'POST':
         try:
-            # Retrieve the GameConcept from the database
-            game_concept = get_object_or_404(GameConcept, id=game_concept_id)
+            # Récupération des données du formulaire
+            game_genre = request.POST.get('game_genre')
+            visual_atmosphere = request.POST.get('visual_atmosphere')
+            thematic_keywords = request.POST.get('thematic_keywords')
+            cultural_references = request.POST.get('cultural_references', '')
+            language = request.POST.get('language', 'fr')
 
-            # Generate an image for the GameConcept
-            game_prompt = f"Generate an artistic representation of a game concept with the following details:\n" \
-                          f"Genre: {game_concept.game_genre}\n" \
-                          f"Visual Atmosphere: {game_concept.visual_atmosphere}\n" \
-                          f"Universe Description: {game_concept.universe_description}"
-            game_image_bytes = query({"inputs": game_prompt})
-
-            # Save the GameConcept image
-            game_image = Image.open(BytesIO(game_image_bytes))
-            game_image_name = f"game_{uuid.uuid4()}.png"
-            game_image_path = os.path.join(settings.MEDIA_ROOT, game_image_name)
-            game_image.save(game_image_path)
-            game_concept.image = f"{settings.MEDIA_URL}{game_image_name}"
-            game_concept.save()
-
-            # Generate images for each associated Character
-            character_images = []
-            for character in game_concept.characters.all():
-                character_prompt = f"Generate a character design with the following details:\n" \
-                                   f"Name: {character.name}\n" \
-                                   f"Class: {character.character_class}\n" \
-                                   f"Narrative Role: {character.narrative_role}\n" \
-                                   f"Background: {character.background}\n" \
-                                   f"Gameplay Description: {character.gameplay_description}"
-                character_image_bytes = query({"inputs": character_prompt})
-
-                # Save the Character image
-                character_image = Image.open(BytesIO(character_image_bytes))
-                character_image_name = f"character_{uuid.uuid4()}.png"
-                character_image_path = os.path.join(settings.MEDIA_ROOT, character_image_name)
-                character_image.save(character_image_path)
-                character.image = f"{settings.MEDIA_URL}{character_image_name}"
-                character.save()
-
-                character_images.append({
-                    "character_id": character.id,
-                    "image_url": f"{settings.MEDIA_URL}{character_image_name}"
-                })
-
-            # Return the generated image URLs
-            return Response(
-                {
-                    "game_concept_image_url": f"{settings.MEDIA_URL}{game_image_name}",
-                    "character_images": character_images,
-                },
-                status=status.HTTP_200_OK,
+            # Appel à l'API pour générer le jeu
+            response = requests.post(
+                'http://127.0.0.1:8000/api/games/generate_game/',
+                json={
+                    'game_genre': game_genre,
+                    'visual_atmosphere': visual_atmosphere,
+                    'thematic_keywords': thematic_keywords,
+                    'cultural_references': cultural_references,
+                    'language': language
+                }
             )
+            
+            if response.status_code == 201:
+                game_data = response.json()
+                # Passer l'ID du jeu créé dans le contexte de succès
+                return render(request, 'success.html', {
+                    'game_id': game_data['id'],
+                    'game_genre': game_data['game_genre']
+                })
+            else:
+                return render(request, 'generate_game.html', {
+                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                })
+                
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return render(request, 'generate_game.html', {
+                'error': str(e)
+            })
+            
+    return render(request, 'generate_game.html')
+
+def game_detail(request, game_id):
+    """Vue détaillée d'un jeu"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    return render(request, 'game_detail.html', {'game': game})
+
+# Vues Frontend
+def home(request):
+    """Vue de la page d'accueil"""
+    # Récupérer tous les jeux
+    games_list = GameConcept.objects.all().order_by('-id')
+    
+    # Créer un paginator avec 1 jeu par page
+    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    page = request.GET.get('page', 1)
+    
+    try:
+        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        # Si la page n'est pas un entier, afficher la première page
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        # Si la page est hors limites, afficher la dernière page
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_games': games_list.count(),
+        'current_page': page,
+        'total_pages': paginator.num_pages,
+    }
+    
+    return render(request, 'home.html', context)
+
+def generate_game_view(request):
+    """Vue pour générer un nouveau jeu"""
+    if request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            game_genre = request.POST.get('game_genre')
+            visual_atmosphere = request.POST.get('visual_atmosphere')
+            thematic_keywords = request.POST.get('thematic_keywords')
+            cultural_references = request.POST.get('cultural_references', '')
+            language = request.POST.get('language', 'fr')
+
+            # Appel à l'API pour générer le jeu
+            response = requests.post(
+                'http://127.0.0.1:8000/api/games/generate_game/',
+                json={
+                    'game_genre': game_genre,
+                    'visual_atmosphere': visual_atmosphere,
+                    'thematic_keywords': thematic_keywords,
+                    'cultural_references': cultural_references,
+                    'language': language
+                }
+            )
+            
+            if response.status_code == 201:
+                game_data = response.json()
+                # Passer l'ID du jeu créé dans le contexte de succès
+                return render(request, 'success.html', {
+                    'game_id': game_data['id'],
+                    'game_genre': game_data['game_genre']
+                })
+            else:
+                return render(request, 'generate_game.html', {
+                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                })
+                
+        except Exception as e:
+            return render(request, 'generate_game.html', {
+                'error': str(e)
+            })
+            
+    return render(request, 'generate_game.html')
+
+def game_detail(request, game_id):
+    """Vue détaillée d'un jeu"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    return render(request, 'game_detail.html', {'game': game})
+
+from django.shortcuts import render, get_object_or_404
+import requests
+import base64
+from io import BytesIO
+from PIL import Image
+import os
+from dotenv import load_dotenv
+from django.conf import settings
+import uuid
+from .models import Character  # Assuming Character is the model for characters
+
+# Load environment variables from .env file
+load_dotenv()
 
 HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")
 
@@ -400,3 +511,44 @@ def query(payload):
         return response.content
     else:
         raise Exception(f"API Error: {response.status_code}, {response.text}")
+    
+def homepage(request):
+    context = {}
+    try:
+        if request.method == "POST":
+            # Récupérer le prompt de l'utilisateur
+            user_prompt = request.POST.get("prompt")
+            
+            # Générer l'image avec l'API
+            image_bytes = query({
+                "inputs": user_prompt,
+            })
+            
+            # Convertir l'image en Base64 pour l'afficher dans le template
+            image = Image.open(BytesIO(image_bytes))
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            
+            # Enregistrer l'image dans le dossier media
+            image_name = f"{uuid.uuid4()}.png"
+            image_path = os.path.join(settings.MEDIA_ROOT, image_name)
+            image.save(image_path)
+
+            # Insérer l'image dans la base de données pour le character avec id=1
+            character = get_object_or_404(Character, id=1)
+            character.image = f"{settings.MEDIA_URL}{image_name}"
+            character.save()
+
+            # Passer l'image en Base64, le chemin de l'image et le prompt au contexte
+            context["image_base64"] = image_base64
+            context["image_path"] = f"{settings.MEDIA_URL}{image_name}"
+            context["user_prompt"] = user_prompt
+            
+        else:
+            pass
+        
+    except Exception as e:
+        context["error"] = str(e)
+    
+    return render(request, "homepage.html", context)
