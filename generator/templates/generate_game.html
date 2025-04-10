@@ -1,0 +1,147 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générer une histoire - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="logo">Game Story Generator</h1>
+            <div class="nav-links">
+                <a href="{% url 'generator:home' %}">Accueil</a>
+                <a href="{% url 'generator:generate_game' %}" class="active">Générer une histoire</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="generate-form-section">
+            <h2>Générer une nouvelle histoire de jeu</h2>
+            
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <!-- Loading Alert -->
+            <div id="loading-alert" class="loading-alert" style="display: none;">
+                <div class="loading-alert-content">
+                    <div class="loading-alert-header">
+                        <div class="spinner"></div>
+                        <h3>Génération en cours</h3>
+                    </div>
+                    <div class="loading-alert-body">
+                        <p id="loading-messages"></p>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="generate-form" class="generate-form" method="POST">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="game_genre">Genre du jeu</label>
+                    <input type="text" id="game_genre" name="game_genre" required 
+                           placeholder="Ex: RPG Tactique, FPS, Action-Aventure">
+                </div>
+
+                <div class="form-group">
+                    <label for="visual_atmosphere">Ambiance visuelle</label>
+                    <input type="text" id="visual_atmosphere" name="visual_atmosphere" required 
+                           placeholder="Ex: Steampunk Renaissance, Cyberpunk, Fantasy médiévale">
+                </div>
+
+                <div class="form-group">
+                    <label for="thematic_keywords">Mots-clés thématiques</label>
+                    <input type="text" id="thematic_keywords" name="thematic_keywords" required 
+                           placeholder="Ex: Inventions, Politique, Révolution">
+                    <small>Séparez les mots-clés par des virgules</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="cultural_references">Références culturelles</label>
+                    <input type="text" id="cultural_references" name="cultural_references" 
+                           placeholder="Ex: Final Fantasy Tactics, Valkyria Chronicles">
+                    <small>Optionnel - Séparez les références par des virgules</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="language">Langue</label>
+                    <select id="language" name="language" required>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                        
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Générer l'histoire</button>
+                    <button type="reset" class="reset-btn">Réinitialiser</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2025 Game Story Generator. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script>
+        const loadingMessages = [
+            "Initialisation de l'IA...",
+            "Création de l'univers du jeu...",
+            "Développement des personnages...",
+            "Conception des lieux...",
+            "Élaboration de l'histoire...",
+            "Peaufinage des détails...",
+            "C'est presque prêt..."
+        ];
+
+        let currentMessageIndex = 0;
+        let messageInterval;
+        let progressWidth = 0;
+
+        function updateLoadingMessage() {
+            const messagesDiv = document.getElementById('loading-messages');
+            const progressFill = document.querySelector('.progress-fill');
+            
+            messagesDiv.style.opacity = '0';
+            
+            setTimeout(() => {
+                messagesDiv.textContent = loadingMessages[currentMessageIndex];
+                messagesDiv.style.opacity = '1';
+                currentMessageIndex = (currentMessageIndex + 1) % loadingMessages.length;
+                
+                // Update progress bar
+                progressWidth = Math.min(progressWidth + (100 / loadingMessages.length), 95);
+                progressFill.style.width = progressWidth + '%';
+            }, 300);
+        }
+
+        document.getElementById('generate-form').addEventListener('submit', function(e) {
+            const loadingAlert = document.getElementById('loading-alert');
+            loadingAlert.style.display = 'flex';
+            loadingAlert.style.opacity = '0';
+            setTimeout(() => {
+                loadingAlert.style.opacity = '1';
+            }, 10);
+            
+            progressWidth = 0;
+            currentMessageIndex = 0;
+            updateLoadingMessage();
+            messageInterval = setInterval(updateLoadingMessage, 3000);
+        });
+    </script>
+</body>
+</html> 

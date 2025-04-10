@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="logo">Game Story Generator</h1>
+            <div class="nav-links">
+                <a href="{% url 'generator:home' %}" class="active">Accueil</a>
+                <a href="{% url 'generator:generate_game' %}">Générer une histoire</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% if total_games == 0 %}
+            <div class="no-games">
+                <h2>Aucune histoire générée</h2>
+                <p>Commencez par générer votre première histoire de jeu !</p>
+                <a href="{% url 'generator:generate_game' %}" class="cta-button">Générer une histoire</a>
+            </div>
+        {% else %}
+            <section class="game-stories">
+                {% for game in page_obj %}
+                <article class="game-card">
+                    <div class="game-header">
+                        <h2>{{ game.game_genre }}</h2>
+                        <span class="atmosphere-tag">{{ game.visual_atmosphere }}</span>
+                    </div>
+                    
+                    <div class="game-content">
+                        <div class="universe-section">
+                            <h3>Univers</h3>
+                            <p>{{ game.universe_description|truncatewords:30 }}</p>
+                        </div>
+
+                        <div class="characters-section">
+                            <h3>Personnages</h3>
+                            <div class="character-list">
+                                {% for character in game.characters.all %}
+                                <div class="character-item">
+                                    <h4>{{ character.name }}</h4>
+                                    <p class="character-class">{{ character.character_class }}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <button class="toggle-content" onclick="toggleContent(this)">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Voir plus</span>
+                        </button>
+
+                        <div class="expandable-content">
+                            <div class="universe-full">
+                                <p>{{ game.universe_description }}</p>
+                            </div>
+
+                            <div class="locations-section">
+                                <h3>Lieux principaux</h3>
+                                <div class="location-list">
+                                    {% for location in game.locations.all %}
+                                    <div class="location-item">
+                                        <h4>{{ location.name }}</h4>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="game-footer">
+                                <div class="tags">
+                                    {% for keyword in game.thematic_keywords.split %}
+                                    <span class="keyword-tag">{{ keyword }}</span>
+                                    {% endfor %}
+                                </div>
+                                <a href="{% url 'generator:game_detail' game.id %}" class="details-btn">Voir plus</a>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </section>
+
+            {% if page_obj.has_other_pages %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="pagination-arrow" title="Page précédente">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% else %}
+                <span class="pagination-arrow disabled" title="Pas de page précédente">
+                    <i class="fas fa-chevron-left"></i>
+                </span>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="pagination-arrow" title="Page suivante">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <span class="pagination-arrow disabled" title="Pas de page suivante">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Debug info -->
+            <div class="debug-info" style="display: none;">
+                <p>Total des jeux : {{ total_games }}</p>
+                <p>Page actuelle : {{ current_page }}</p>
+                <p>Nombre total de pages : {{ total_pages }}</p>
+            </div>
+        {% endif %}
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2025 Game Story Generator. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script>
+    function toggleContent(button) {
+        const card = button.closest('.game-card');
+        const content = card.querySelector('.expandable-content');
+        const icon = button.querySelector('i');
+        const text = button.querySelector('span');
+        
+        content.classList.toggle('expanded');
+        
+        if (content.classList.contains('expanded')) {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            text.textContent = 'Voir moins';
+        } else {
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+            text.textContent = 'Voir plus';
+        }
+    }
+    </script>
+</body>
+</html> 

@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -205,6 +206,7 @@ class GameGeneratorViewSet(viewsets.ModelViewSet):
         visual_atmosphere = request.data.get('visual_atmosphere')
         thematic_keywords = request.data.get('thematic_keywords')
         cultural_references = request.data.get('cultural_references', '')
+        language = request.data.get('language', 'fr')  # fr par défaut
 
         # Création du prompt pour Mistral
         prompt = f"""[INST]Tu es un expert en game design. Génère un concept de jeu vidéo détaillé avec les éléments suivants:
@@ -235,6 +237,9 @@ Background: [histoire du personnage]
 Gameplay: [style de jeu unique]
 
 PERSONNAGE 2:
+[Même format que personnage 1]
+
+PERSONNAGE 3:
 [Même format que personnage 1]
 
 LIEU 1:
@@ -293,6 +298,7 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
                 visual_atmosphere=visual_atmosphere,
                 thematic_keywords=thematic_keywords,
                 cultural_references=cultural_references,
+                language=language,
                 universe_description=parsed_response["universe_description"],
                 story_act_1=parsed_response["story_acts"][0],
                 story_act_2=parsed_response["story_acts"][1],
@@ -319,6 +325,158 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
                 {"error": f"Erreur lors du traitement: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# Vues Frontend
+def home(request):
+    """Vue de la page d'accueil"""
+    # Récupérer tous les jeux
+    games_list = GameConcept.objects.all().order_by('-id')
+    
+    # Créer un paginator avec 1 jeu par page
+    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    page = request.GET.get('page', 1)
+    
+    try:
+        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        # Si la page n'est pas un entier, afficher la première page
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        # Si la page est hors limites, afficher la dernière page
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_games': games_list.count(),
+        'current_page': page,
+        'total_pages': paginator.num_pages,
+    }
+    
+    return render(request, 'home.html', context)
+
+def generate_game_view(request):
+    """Vue pour générer un nouveau jeu"""
+    if request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            game_genre = request.POST.get('game_genre')
+            visual_atmosphere = request.POST.get('visual_atmosphere')
+            thematic_keywords = request.POST.get('thematic_keywords')
+            cultural_references = request.POST.get('cultural_references', '')
+            language = request.POST.get('language', 'fr')
+
+            # Appel à l'API pour générer le jeu
+            response = requests.post(
+                'http://127.0.0.1:8000/api/games/generate_game/',
+                json={
+                    'game_genre': game_genre,
+                    'visual_atmosphere': visual_atmosphere,
+                    'thematic_keywords': thematic_keywords,
+                    'cultural_references': cultural_references,
+                    'language': language
+                }
+            )
+            
+            if response.status_code == 201:
+                game_data = response.json()
+                # Passer l'ID du jeu créé dans le contexte de succès
+                return render(request, 'success.html', {
+                    'game_id': game_data['id'],
+                    'game_genre': game_data['game_genre']
+                })
+            else:
+                return render(request, 'generate_game.html', {
+                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                })
+                
+        except Exception as e:
+            return render(request, 'generate_game.html', {
+                'error': str(e)
+            })
+            
+    return render(request, 'generate_game.html')
+
+def game_detail(request, game_id):
+    """Vue détaillée d'un jeu"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    return render(request, 'game_detail.html', {'game': game})
+
+# Vues Frontend
+def home(request):
+    """Vue de la page d'accueil"""
+    # Récupérer tous les jeux
+    games_list = GameConcept.objects.all().order_by('-id')
+    
+    # Créer un paginator avec 1 jeu par page
+    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    page = request.GET.get('page', 1)
+    
+    try:
+        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        # Si la page n'est pas un entier, afficher la première page
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        # Si la page est hors limites, afficher la dernière page
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_games': games_list.count(),
+        'current_page': page,
+        'total_pages': paginator.num_pages,
+    }
+    
+    return render(request, 'home.html', context)
+
+def generate_game_view(request):
+    """Vue pour générer un nouveau jeu"""
+    if request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            game_genre = request.POST.get('game_genre')
+            visual_atmosphere = request.POST.get('visual_atmosphere')
+            thematic_keywords = request.POST.get('thematic_keywords')
+            cultural_references = request.POST.get('cultural_references', '')
+            language = request.POST.get('language', 'fr')
+
+            # Appel à l'API pour générer le jeu
+            response = requests.post(
+                'http://127.0.0.1:8000/api/games/generate_game/',
+                json={
+                    'game_genre': game_genre,
+                    'visual_atmosphere': visual_atmosphere,
+                    'thematic_keywords': thematic_keywords,
+                    'cultural_references': cultural_references,
+                    'language': language
+                }
+            )
+            
+            if response.status_code == 201:
+                game_data = response.json()
+                # Passer l'ID du jeu créé dans le contexte de succès
+                return render(request, 'success.html', {
+                    'game_id': game_data['id'],
+                    'game_genre': game_data['game_genre']
+                })
+            else:
+                return render(request, 'generate_game.html', {
+                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                })
+                
+        except Exception as e:
+            return render(request, 'generate_game.html', {
+                'error': str(e)
+            })
+            
+    return render(request, 'generate_game.html')
+
+def game_detail(request, game_id):
+    """Vue détaillée d'un jeu"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    return render(request, 'game_detail.html', {'game': game})
 
 from django.shortcuts import render, get_object_or_404
 import requests
