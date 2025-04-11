@@ -20,3 +20,10 @@
    ```
    http://127.0.0.1:8000/
    ```
+
+### Variables d'environnement
+DB_USER
+
+DB_PASSWORD
+
+HUGGINGFACE_API_TOKEN
