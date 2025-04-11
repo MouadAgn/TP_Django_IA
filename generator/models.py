@@ -18,7 +18,7 @@ class GameConcept(models.Model):
     
     # Champs générés par l'IA
     universe_description = models.TextField()
-    image = models.ImageField(upload_to='concept/', blank=True, null=True)
+    image = models.CharField(max_length=255, blank=True, null=True)
     story_act_1 = models.TextField()
     story_act_2 = models.TextField()
     story_act_3 = models.TextField()
@@ -53,3 +53,11 @@ class Location(models.Model):
 
     def __str__(self):
         return self.name
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    game = models.ForeignKey(GameConcept, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'game')  # Empêche les doublons de favoris

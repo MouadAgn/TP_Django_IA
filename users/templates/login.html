@@ -1,32 +1,272 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Game Story Generator</title>
-    <link rel="stylesheet" href="{% static 'css/stylesauth.css' %}">
+    <title>Connexion - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
         rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
 
+        .split-container {
+            width: 100%;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .auth-form-section {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .auth-form-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff9d, transparent);
+            animation: borderFlow 2s linear infinite;
+        }
+
+        @keyframes borderFlow {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .auth-form-section h2 {
+            color: #00ff9d;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .auth-form div ul li:first-child {
+            display: none;
+        }
+
+        .auth-form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #00ff9d;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            border-radius: 5px;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: #00ff9d;
+            box-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .submit-btn,
+        .switch-btn {
+            flex: 1;
+            padding: 0.8rem;
+            border-radius: 5px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            text-transform: uppercase;
+            text-align: center;
+            text-decoration: none;
+            letter-spacing: 1px;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #00ff9d, #00b8ff);
+            color: #000;
+        }
+
+        .switch-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+
+        .submit-btn:hover,
+        .switch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 157, 0.3);
+        }
+
+        .error-message {
+            color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid rgba(255, 77, 77, 0.3);
+            padding: 0.8rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.3rem;
+        }
+
+        .field-requirements {
+            padding: 0.5rem 0 0 0.5rem;
+            margin: 0;
+            font-size: 0.75rem;
+            border-left: 2px solid rgba(0, 255, 157, 0.3);
+        }
+
+        .field-requirements li {
+            margin-bottom: 0.3rem;
+            display: flex;
+            align-items: center;
+            transition: color 0.3s ease;
+        }
+
+        .auth-form ul {
+            list-style: none;
+            padding: 0;
+            margin: 0.5rem 0 0 0;
+            color: #ff4d4d;
+            font-size: 0.8rem;
+        }
+
+        .auth-form ul li {
+            margin-bottom: 0.3rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+    </style>
 </head>
 
 <body>
-    <main class="container">
-        <section class="generate-form-section">
-            <h2>Login</h2>
-            <form method="post" class="generate-form">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <div class="form-actions">
-                    <button type="submit" class="submit-btn">Login</button>
-                    <a href="{% url 'register' %}" class="reset-btn">Register</a>
-                </div>
-            </form>
-        </section>
-    </main>
+    <div class="split-container">
+        <div class="form-side">
+            <main class="container">
+                <section class="auth-form-section">
+                    <h2>Connexion</h2>
+                    <form method="post" class="auth-form">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                        <div class="error-message">
+                            Nom d'utilisateur ou mot de passe incorrect.
+                        </div>
+                        {% endif %}
+                        <div class="form-field">
+                            <label for="id_username">Nom d'utilisateur</label>
+                            <input type="text" name="username" id="id_username" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="id_password">Mot de passe</label>
+                            <input type="password" name="password" id="id_password" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="submit-btn">Se connecter</button>
+                            <a href="{% url 'register' %}" class="switch-btn">S'inscrire</a>
+                        </div>
+                    </form>
+                </section>
+            </main>
+        </div>
+        <!-- <div class="image-side">
+            <div class="image-overlay"></div>
+            <img src="" alt="Hero Image" class="hero-image" id="heroImage">
+        </div> -->
+    </div>
+
+    <!-- <script>
+        const images = [
+            'https://wallpapercave.com/wp/wp14703347.jpg', // Vikings
+            'https://wallpapercave.com/uwp/uwp3572459.jpeg', // Game of Thrones
+            'https://wallpapercave.com/uwp/uwp4627767.jpeg', // Star Wars
+            'https://wallpapercave.com/wp/wp3573501.jpg'  // Batman
+        ];
+
+        let currentImageIndex = 0;
+        const heroImage = document.getElementById('heroImage');
+
+        function changeImage() {
+            const nextImage = new Image();
+            nextImage.onload = function () {
+                heroImage.style.opacity = '0';
+                setTimeout(() => {
+                    currentImageIndex = (currentImageIndex + 1) % images.length;
+                    heroImage.src = images[currentImageIndex];
+                    heroImage.style.opacity = '0.8';
+                }, 500);
+            };
+            nextImage.src = images[(currentImageIndex + 1) % images.length];
+        }
+
+        // Préchargement des images
+        function preloadImages() {
+            images.forEach((url) => {
+                const img = new Image();
+                img.src = url;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            preloadImages();
+            heroImage.src = images[currentImageIndex];
+            heroImage.style.opacity = '0.8';
+            setInterval(changeImage, 5000);
+        });
+    </script> -->
 </body>
 
 </html>

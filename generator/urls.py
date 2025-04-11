@@ -13,6 +13,7 @@ urlpatterns = [
     path('', home, name='home'),
     path('generate/', generate_game_view, name='generate_game'),
     path('game/<int:game_id>/', game_detail, name='game_detail'),
+    path('api/games/generate_game/', GameGeneratorViewSet.as_view({'post': 'generate_game'}), name='generate_game_api'),
 ]
 
 # Ajout des URLs de l'API

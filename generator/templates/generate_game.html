@@ -17,8 +17,10 @@
         <div class="nav-container">
             <h1 class="logo">Game Story Generator</h1>
             <div class="nav-links">
-                <a href="{% url 'generator:home' %}">Accueil</a>
-                <a href="{% url 'generator:generate_game' %}" class="active">Générer une histoire</a>
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'generate_game' %}" class="active">Générer une histoire</a>
+                <a href="{% url 'profile' %}">Profile</a>
+                <a href="{% url 'favorites' %}">Favoris</a>
             </div>
         </div>
     </nav>

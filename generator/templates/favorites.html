@@ -1,0 +1,223 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Favoris - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="logo">Game Story Generator</h1>
+            <div class="nav-links">
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'generate_game' %}">Générer</a>
+                <a href="{% url 'favorites' %}" class="active">Favoris</a>
+                <a href="{% url 'profile' %}">Profile</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1 class="page-title">Mes Jeux Favoris</h1>
+        
+        {% if favorites %}
+        <div class="favorites-grid">
+            {% for favorite in favorites %}
+            <div class="game-card">
+                <div class="game-header">
+                    <h2>{{ favorite.game.game_genre }}</h2>
+                    <button class="favorite-btn active" onclick="toggleFavorite('{{ favorite.game.id }}', this)">
+                        <i class="fas fa-heart"></i>
+                    </button>
+                </div>
+                <div class="game-content">
+                    <p class="atmosphere">{{ favorite.game.visual_atmosphere }}</p>
+                    <div class="themes">
+                        {% for theme in favorite.game.thematic_keywords.split %}
+                        <span class="theme-tag">{{ theme }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="creator-info">
+                        <p class="creator">
+                            <span class="creator-label">Créé par:</span>
+                            <span class="creator-name">{{ favorite.game.user.username }}</span>
+                        </p>
+                    </div>
+                    <a href="{% url 'game_detail' favorite.game.id %}" class="view-details">Voir les détails</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-favorites">
+            <i class="fas fa-heart-broken"></i>
+            <p>Vous n'avez pas encore de jeux favoris</p>
+            <a href="{% url 'home' %}" class="btn-primary">Découvrir des jeux</a>
+        </div>
+        {% endif %}
+    </main>
+
+    <style>
+        .page-title {
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            margin: 2rem 0;
+            font-size: 2.5rem;
+            text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
+        }
+
+        .favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        .game-card {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 157, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 255, 157, 0.2);
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .game-header h2 {
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+        }
+
+        .favorite-btn {
+            background: none;
+            border: none;
+            color: #ff4d4d;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .favorite-btn.active {
+            color: #ff4d4d;
+        }
+
+        .atmosphere {
+            color: #00ff9d;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        .themes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .theme-tag {
+            background: rgba(0, 255, 157, 0.1);
+            color: #00ff9d;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        .view-details {
+            display: inline-block;
+            background: #00ff9d;
+            color: #000;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .view-details:hover {
+            background: #fff;
+            transform: translateY(-2px);
+        }
+
+        .empty-favorites {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #fff;
+        }
+
+        .empty-favorites i {
+            font-size: 4rem;
+            color: #ff4d4d;
+            margin-bottom: 1rem;
+        }
+
+        .empty-favorites p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            background: #00ff9d;
+            color: #000;
+            padding: 0.8rem 2rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #fff;
+            transform: translateY(-2px);
+        }
+    </style>
+
+    <script>
+    function toggleFavorite(gameId, button) {
+        fetch(`/api/toggle-favorite/${gameId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.is_favorite) {
+                // Si le jeu a été retiré des favoris, on cache la carte
+                button.closest('.game-card').style.opacity = '0';
+                setTimeout(() => {
+                    button.closest('.game-card').remove();
+                    // Vérifier s'il reste des favoris
+                    if (document.querySelectorAll('.game-card').length === 0) {
+                        location.reload(); // Recharger la page pour afficher le message "pas de favoris"
+                    }
+                }, 300);
+            }
+        });
+    }
+    </script>
+</body>
+</html> 

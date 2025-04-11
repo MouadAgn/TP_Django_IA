@@ -1,14 +1,13 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser
-from rest_framework.views import APIView
-from .models import GameConcept, Character, Location
+# from rest_framework.parsers import JSONParser
+# from rest_framework.views import APIView
+from .models import GameConcept, Character, Location, Favorite
 from rest_framework import serializers
 import requests
-import json
 import os
 from dotenv import load_dotenv
 import time
@@ -18,6 +17,15 @@ from io import BytesIO
 from PIL import Image
 from django.conf import settings
 import uuid
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse, HttpResponse, FileResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.units import cm
+from datetime import datetime
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -36,12 +44,16 @@ class LocationSerializer(serializers.ModelSerializer):
 class GameConceptSerializer(serializers.ModelSerializer):
     characters = CharacterSerializer(many=True, read_only=True)
     locations = LocationSerializer(many=True, read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = GameConcept
-        fields = '__all__'
+        fields = ['id', 'game_genre', 'visual_atmosphere', 'thematic_keywords', 
+                 'cultural_references', 'language', 'universe_description', 
+                 'story_act_1', 'story_act_2', 'story_act_3', 'created_at', 
+                 'updated_at', 'user', 'characters', 'locations', 'image']
 
-class GameGeneratorViewSet(viewsets.ModelViewSet):
+class GameGeneratorViewSet(LoginRequiredMixin, viewsets.ModelViewSet):
     queryset = GameConcept.objects.all()
     serializer_class = GameConceptSerializer
 
@@ -209,12 +221,16 @@ class GameGeneratorViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def generate_game(self, request):
+        # Utilisation directe de l'utilisateur connecté
+        data = request.data.copy()
+        data['user'] = request.user.id
+        
         # Récupération des données du formulaire
-        game_genre = request.data.get('game_genre')
-        visual_atmosphere = request.data.get('visual_atmosphere')
-        thematic_keywords = request.data.get('thematic_keywords')
-        cultural_references = request.data.get('cultural_references', '')
-        language = request.data.get('language', 'fr')  # fr par défaut
+        game_genre = data.get('game_genre')
+        visual_atmosphere = data.get('visual_atmosphere')
+        thematic_keywords = data.get('thematic_keywords')
+        cultural_references = data.get('cultural_references', '')
+        language = data.get('language', 'fr')
 
         # Création du prompt pour Mistral
         prompt = f"""[INST]Tu es un expert en game design. Génère un concept de jeu vidéo détaillé avec les éléments suivants:
@@ -300,18 +316,78 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             # Parse la réponse
             parsed_response = self.parse_ai_response(generated_text)
             
-            # Création du concept de jeu
-            game_concept = GameConcept.objects.create(
-                game_genre=game_genre,
-                visual_atmosphere=visual_atmosphere,
-                thematic_keywords=thematic_keywords,
-                cultural_references=cultural_references,
-                language=language,
-                universe_description=parsed_response["universe_description"],
-                story_act_1=parsed_response["story_acts"][0],
-                story_act_2=parsed_response["story_acts"][1],
-                story_act_3=parsed_response["story_acts"][2]
-            )
+            # Génération de l'image avec Stable Diffusion
+            image_prompt = f"A video game scene featuring {game_genre} style, with {visual_atmosphere} atmosphere, including elements of {thematic_keywords}"
+            image_api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+            image_headers = {
+                "Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_TOKEN')}"
+            }
+            
+            try:
+                # Appel à l'API Stable Diffusion avec retry
+                max_retries = 5  # Augmentation du nombre de tentatives
+                retry_delay = 5  # Augmentation du délai entre les tentatives
+                
+                for attempt in range(max_retries):
+                    try:
+                        image_response = requests.post(
+                            image_api_url,
+                            headers=image_headers,
+                            json={"inputs": image_prompt}
+                        )
+                        
+                        if image_response.status_code == 200:
+                            # Créer le dossier media/concept s'il n'existe pas
+                            os.makedirs('media/concept', exist_ok=True)
+                            
+                            # Générer un nom de fichier unique
+                            image_filename = f"game_{int(time.time())}.png"
+                            image_path = f"concept/{image_filename}"
+                            
+                            # Sauvegarder l'image
+                            with open(f"media/{image_path}", "wb") as f:
+                                f.write(image_response.content)
+                            break
+                        elif image_response.status_code == 503:
+                            if attempt < max_retries - 1:
+                                print(f"Service indisponible, nouvelle tentative dans {retry_delay} secondes...")
+                                time.sleep(retry_delay)
+                                retry_delay *= 2  # Augmentation progressive du délai
+                                continue
+                            else:
+                                image_path = None
+                                print(f"Erreur génération image après {max_retries} tentatives: {image_response.status_code}, {image_response.text}")
+                        else:
+                            image_path = None
+                            print(f"Erreur génération image: {image_response.status_code}, {image_response.text}")
+                            break
+                    except Exception as e:
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            continue
+                        image_path = None
+                        print(f"Erreur génération image: {str(e)}")
+                        break
+            except Exception as e:
+                image_path = None
+                print(f"Erreur génération image: {str(e)}")
+
+            # Création du concept de jeu avec l'image
+            game_data = {
+                'game_genre': game_genre,
+                'visual_atmosphere': visual_atmosphere,
+                'thematic_keywords': thematic_keywords,
+                'cultural_references': cultural_references,
+                'language': language,
+                'universe_description': parsed_response["universe_description"],
+                'story_act_1': parsed_response["story_acts"][0],
+                'story_act_2': parsed_response["story_acts"][1],
+                'story_act_3': parsed_response["story_acts"][2],
+                'user': request.user,
+                'image': image_path
+            }
+            
+            game_concept = GameConcept.objects.create(**game_data)
             
             # Création des personnages
             for character_text in parsed_response["characters"]:
@@ -335,24 +411,26 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             )
 
 # Vues Frontend
+@login_required
 def home(request):
     """Vue de la page d'accueil"""
-    # Récupérer tous les jeux
-    games_list = GameConcept.objects.all().order_by('-id')
+    # Récupérer tous les jeux de la base de données avec les informations de l'utilisateur
+    games_list = GameConcept.objects.select_related('user').all().order_by('-created_at')
     
     # Créer un paginator avec 1 jeu par page
-    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
+    paginator = Paginator(games_list, 1)
     page = request.GET.get('page', 1)
     
     try:
-        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
         page_obj = paginator.page(page)
     except PageNotAnInteger:
-        # Si la page n'est pas un entier, afficher la première page
         page_obj = paginator.page(1)
     except EmptyPage:
-        # Si la page est hors limites, afficher la dernière page
         page_obj = paginator.page(paginator.num_pages)
+    
+    # Pour chaque jeu, on ajoute le pseudo du créateur
+    for game in page_obj:
+        game.creator_username = game.user.username
     
     context = {
         'page_obj': page_obj,
@@ -363,6 +441,7 @@ def home(request):
     
     return render(request, 'home.html', context)
 
+@login_required
 def generate_game_view(request):
     """Vue pour générer un nouveau jeu"""
     if request.method == 'POST':
@@ -374,81 +453,9 @@ def generate_game_view(request):
             cultural_references = request.POST.get('cultural_references', '')
             language = request.POST.get('language', 'fr')
 
-            # Appel à l'API pour générer le jeu
-            response = requests.post(
-                'http://127.0.0.1:8000/api/games/generate_game/',
-                json={
-                    'game_genre': game_genre,
-                    'visual_atmosphere': visual_atmosphere,
-                    'thematic_keywords': thematic_keywords,
-                    'cultural_references': cultural_references,
-                    'language': language
-                }
-            )
-            
-            if response.status_code == 201:
-                game_data = response.json()
-                # Passer l'ID du jeu créé dans le contexte de succès
-                return render(request, 'success.html', {
-                    'game_id': game_data['id'],
-                    'game_genre': game_data['game_genre']
-                })
-            else:
-                return render(request, 'generate_game.html', {
-                    'error': 'Une erreur est survenue lors de la génération du jeu.'
-                })
-                
-        except Exception as e:
-            return render(request, 'generate_game.html', {
-                'error': str(e)
-            })
-            
-    return render(request, 'generate_game.html')
-
-def game_detail(request, game_id):
-    """Vue détaillée d'un jeu"""
-    game = get_object_or_404(GameConcept, id=game_id)
-    return render(request, 'game_detail.html', {'game': game})
-
-# Vues Frontend
-def home(request):
-    """Vue de la page d'accueil"""
-    # Récupérer tous les jeux
-    games_list = GameConcept.objects.all().order_by('-id')
-    
-    # Créer un paginator avec 1 jeu par page
-    paginator = Paginator(games_list, 1)  # Changé de 3 à 1
-    page = request.GET.get('page', 1)
-    
-    try:
-        # Convertir le numéro de page en entier et obtenir les jeux pour cette page
-        page_obj = paginator.page(page)
-    except PageNotAnInteger:
-        # Si la page n'est pas un entier, afficher la première page
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        # Si la page est hors limites, afficher la dernière page
-        page_obj = paginator.page(paginator.num_pages)
-    
-    context = {
-        'page_obj': page_obj,
-        'total_games': games_list.count(),
-        'current_page': page,
-        'total_pages': paginator.num_pages,
-    }
-    
-    return render(request, 'home.html', context)
-
-def generate_game_view(request):
-    """Vue pour générer un nouveau jeu"""
-    if request.method == 'POST':
-        try:
-            # Récupération des données du formulaire
-            game_genre = request.POST.get('game_genre')
-            visual_atmosphere = request.POST.get('visual_atmosphere')
-            thematic_keywords = request.POST.get('thematic_keywords')
-            cultural_references = request.POST.get('cultural_references', '')
-            language = request.POST.get('language', 'fr')
+            # Récupération du cookie de session et du token CSRF
+            session_cookie = request.COOKIES.get('sessionid')
+            csrf_token = request.COOKIES.get('csrftoken')
 
             # Appel à l'API pour générer le jeu
             response = requests.post(
@@ -458,20 +465,25 @@ def generate_game_view(request):
                     'visual_atmosphere': visual_atmosphere,
                     'thematic_keywords': thematic_keywords,
                     'cultural_references': cultural_references,
-                    'language': language
+                    'language': language,
+                    'user': request.user.id
+                },
+                headers={
+                    'X-CSRFToken': csrf_token,
+                    'Cookie': f'sessionid={session_cookie}; csrftoken={csrf_token}',
+                    'Referer': 'http://127.0.0.1:8000'
                 }
             )
             
             if response.status_code == 201:
                 game_data = response.json()
-                # Passer l'ID du jeu créé dans le contexte de succès
                 return render(request, 'success.html', {
                     'game_id': game_data['id'],
                     'game_genre': game_data['game_genre']
                 })
             else:
                 return render(request, 'generate_game.html', {
-                    'error': 'Une erreur est survenue lors de la génération du jeu.'
+                    'error': f'Une erreur est survenue lors de la génération du jeu. Status: {response.status_code}, Message: {response.text}'
                 })
                 
         except Exception as e:
@@ -481,74 +493,197 @@ def generate_game_view(request):
             
     return render(request, 'generate_game.html')
 
+@login_required
 def game_detail(request, game_id):
     """Vue détaillée d'un jeu"""
     game = get_object_or_404(GameConcept, id=game_id)
-    return render(request, 'game_detail.html', {'game': game})
+    is_favorite = Favorite.objects.filter(user=request.user, game=game).exists()
+    return render(request, 'game_detail.html', {
+        'game': game,
+        'is_favorite': is_favorite
+    })
 
-from django.shortcuts import render, get_object_or_404
-import requests
-import base64
-from io import BytesIO
-from PIL import Image
-import os
-from dotenv import load_dotenv
-from django.conf import settings
-import uuid
-from .models import Character  # Assuming Character is the model for characters
 
-# Load environment variables from .env file
-load_dotenv()
+@login_required
+def favorites(request):
+    """Vue pour afficher les favoris de l'utilisateur"""
+    favorites = Favorite.objects.filter(user=request.user).select_related('game', 'game__user').order_by('-created_at')
+    return render(request, 'favorites.html', {'favorites': favorites})
 
-HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")
-
-API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
-headers = {"Authorization": f"Bearer {HUGGING_FACE_API_KEY}"}
-
-def query(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        return response.content
+@login_required
+def toggle_favorite(request, game_id):
+    """Vue pour ajouter/retirer un jeu des favoris"""
+    game = get_object_or_404(GameConcept, id=game_id)
+    favorite, created = Favorite.objects.get_or_create(user=request.user, game=game)
+    
+    if not created:
+        favorite.delete()
+        is_favorite = False
     else:
-        raise Exception(f"API Error: {response.status_code}, {response.text}")
+        is_favorite = True
     
-def homepage(request):
-    context = {}
+    return JsonResponse({'is_favorite': is_favorite})
+
+def export_pdf(request, game_id):
     try:
-        if request.method == "POST":
-            # Récupérer le prompt de l'utilisateur
-            user_prompt = request.POST.get("prompt")
-            
-            # Générer l'image avec l'API
-            image_bytes = query({
-                "inputs": user_prompt,
-            })
-            
-            # Convertir l'image en Base64 pour l'afficher dans le template
-            image = Image.open(BytesIO(image_bytes))
-            buffered = BytesIO()
-            image.save(buffered, format="PNG")
-            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-            
-            # Enregistrer l'image dans le dossier media
-            image_name = f"{uuid.uuid4()}.png"
-            image_path = os.path.join(settings.MEDIA_ROOT, image_name)
-            image.save(image_path)
-
-            # Insérer l'image dans la base de données pour le character avec id=1
-            character = get_object_or_404(Character, id=1)
-            character.image = f"{settings.MEDIA_URL}{image_name}"
-            character.save()
-
-            # Passer l'image en Base64, le chemin de l'image et le prompt au contexte
-            context["image_base64"] = image_base64
-            context["image_path"] = f"{settings.MEDIA_URL}{image_name}"
-            context["user_prompt"] = user_prompt
-            
-        else:
-            pass
+        game = GameConcept.objects.get(id=game_id)
+        buffer = BytesIO()
         
+        # Configuration du document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=1.5*cm,
+            leftMargin=1.5*cm,
+            topMargin=1.5*cm,
+            bottomMargin=1.5*cm
+        )
+        
+        # Styles personnalisés
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=28,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1a1a2e'),
+            alignment=1,  # Centré
+            fontName='Helvetica-Bold'
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=18,
+            spaceAfter=20,
+            textColor=colors.HexColor('#16213e'),
+            alignment=1,  # Centré
+            fontName='Helvetica-Bold'
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            spaceBefore=15,
+            spaceAfter=10,
+            textColor=colors.HexColor('#1a1a2e'),
+            fontName='Helvetica-Bold',
+            borderPadding=(10, 10, 10, 10),
+            borderWidth=1,
+            borderColor=colors.HexColor('#e1e1e1'),
+            borderRadius=5
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=12,
+            spaceAfter=12,
+            textColor=colors.HexColor('#333333'),
+            fontName='Helvetica',
+            leading=16
+        )
+        
+        info_style = ParagraphStyle(
+            'InfoStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#666666'),
+            alignment=2  # Aligné à droite
+        )
+
+        # Contenu
+        elements = []
+        
+        # En-tête avec date
+        date_str = datetime.now().strftime("%d/%m/%Y")
+        elements.append(Paragraph(f"Game Story Generator - {date_str}", info_style))
+        elements.append(Spacer(1, 20))
+        
+        # Titre et genre
+        elements.append(Paragraph(game.game_genre.upper(), title_style))
+        elements.append(Paragraph(f"Ambiance : {game.visual_atmosphere}", subtitle_style))
+        elements.append(Spacer(1, 30))
+        
+        # Description de l'univers
+        elements.append(Paragraph("Description de l'univers", heading_style))
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(game.universe_description, normal_style))
+        elements.append(Spacer(1, 20))
+        
+        # Personnages
+        elements.append(Paragraph("Personnages", heading_style))
+        elements.append(Spacer(1, 10))
+        
+        # Tableau des personnages
+        characters_data = [[Paragraph("<b>Nom</b>", normal_style), 
+                          Paragraph("<b>Classe</b>", normal_style)]]
+        for character in game.characters.all():
+            characters_data.append([
+                Paragraph(character.name, normal_style),
+                Paragraph(character.character_class, normal_style)
+            ])
+            
+        characters_table = Table(characters_data, colWidths=[doc.width/2.0]*2)
+        characters_table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e1e1e1')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f5f5f5')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#333333')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 11),
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+        ]))
+        elements.append(characters_table)
+        elements.append(Spacer(1, 20))
+        
+        # Lieux
+        elements.append(Paragraph("Lieux principaux", heading_style))
+        elements.append(Spacer(1, 10))
+        locations_list = []
+        for location in game.locations.all():
+            locations_list.append(f"• {location.name}")
+        locations_text = "<br/>".join(locations_list)
+        elements.append(Paragraph(locations_text, normal_style))
+        elements.append(Spacer(1, 20))
+        
+        # Mots-clés thématiques
+        elements.append(Paragraph("Thèmes", heading_style))
+        elements.append(Spacer(1, 10))
+        keywords = game.thematic_keywords.split()
+        keywords_text = ", ".join([f"#{keyword}" for keyword in keywords])
+        elements.append(Paragraph(keywords_text, normal_style))
+        
+        # Pied de page
+        elements.append(Spacer(1, 40))
+        elements.append(Paragraph(
+            "Document généré automatiquement par Game Story Generator",
+            info_style
+        ))
+        
+        # Génération du PDF
+        doc.build(elements)
+        
+        # Préparation de la réponse
+        buffer.seek(0)
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename=f'game-story-{game_id}.pdf'
+        )
+
+    except GameConcept.DoesNotExist:
+        return HttpResponse(status=404)
     except Exception as e:
-        context["error"] = str(e)
-    
-    return render(request, "homepage.html", context)
+        print(f"Erreur lors de la génération du PDF: {str(e)}")
+        return HttpResponse(status=500)

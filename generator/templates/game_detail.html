@@ -13,8 +13,10 @@
         <div class="nav-container">
             <h1 class="logo">Game Story Generator</h1>
             <div class="nav-links">
-                <a href="{% url 'generator:home' %}">Accueil</a>
-                <a href="{% url 'generator:generate_game' %}">Générer une histoire</a>
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'generate_game' %}">Générer une histoire</a>
+                <a href="{% url 'favorites' %}">Favoris</a>
+                <a href="{% url 'profile' %}">Profile</a>
             </div>
         </div>
     </nav>
@@ -22,8 +24,13 @@
     <main class="container">
         <article class="game-detail">
             <header class="game-detail-header">
-                <h1>{{ game.game_genre }}</h1>
-                <span class="atmosphere-tag large">{{ game.visual_atmosphere }}</span>
+                <div class="header-content">
+                    <h1>{{ game.game_genre }}</h1>
+                    <span class="atmosphere-tag large">{{ game.visual_atmosphere }}</span>
+                    <button class="favorite-btn {% if is_favorite %}active{% endif %}" data-game-id="{{ game.id }}">
+                        <i class="fas fa-heart"></i>
+                    </button>
+                </div>
             </header>
 
             <section class="game-universe">
@@ -91,6 +98,13 @@
                     {% endfor %}
                 </div>
             </div>
+
+            <div class="creator-info">
+                <p class="creator">
+                    <span class="creator-label">Créé par:</span>
+                    <span class="creator-name">{{ game.user.username }}</span>
+                </p>
+            </div>
         </article>
     </main>
 
@@ -99,5 +113,93 @@
             <p>&copy; 2025 Game Story Generator. Tous droits réservés.</p>
         </div>
     </footer>
+
+    <style>
+        .creator-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(0, 255, 157, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #00ff9d;
+        }
+
+        .creator {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .creator-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+        }
+
+        .creator-name {
+            color: #00ff9d;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        .creator-name:hover {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .favorite-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 77, 77, 0.5);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0.5rem;
+            border-radius: 50%;
+        }
+
+        .favorite-btn:hover {
+            transform: scale(1.2);
+            color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+        }
+
+        .favorite-btn.active {
+            color: #ff4d4d;
+        }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.favorite-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const gameId = this.dataset.gameId;
+                toggleFavorite(gameId, this);
+            });
+        });
+    });
+
+    function toggleFavorite(gameId, button) {
+        fetch(`/api/toggle-favorite/${gameId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            button.classList.toggle('active', data.is_favorite);
+        });
+    }
+    </script>
 </body>
 </html> 

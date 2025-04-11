@@ -23,7 +23,9 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('/')
+            # Redirect to the previous page selected by the user or a default page
+            next_url = request.GET.get('next', '/')
+            return redirect(next_url)
     else:
         form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
