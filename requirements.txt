@@ -1,0 +1,18 @@
+# Django framework
+Django>=4.2,<5.0
+djangorestframework>=3.14,<4.0
+
+# Requests
+requests>=2.25,<3.0
+
+# Handle .env
+python-dotenv>=0.21,<1.0
+
+# Handle Image
+Pillow>=9.0,<10.0
+
+# Handle Pdf
+reportlab>=3.6,<4.0
+
+# Handle Mysql db support
+PyMySQL>=1.0,<2.0

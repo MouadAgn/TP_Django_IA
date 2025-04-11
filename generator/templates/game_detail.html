@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ game.game_genre }} - Game Story Generator</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="logo">Game Story Generator</h1>
+            <div class="nav-links">
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'generate_game' %}">Générer une histoire</a>
+                <a href="{% url 'favorites' %}">Favoris</a>
+                <a href="{% url 'profile' %}">Profile</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <article class="game-detail">
+            <header class="game-detail-header">
+                <div class="header-content">
+                    <h1>{{ game.game_genre }}</h1>
+                    <span class="atmosphere-tag large">{{ game.visual_atmosphere }}</span>
+                    <button class="favorite-btn {% if is_favorite %}active{% endif %}" data-game-id="{{ game.id }}">
+                        <i class="fas fa-heart"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="game-universe-image">
+                {% if game.image %}
+                <img src="{{ game.image.url }}" alt="Universe of {{ game.game_genre }}" class="universe-image">
+                {% endif %}
+            </div>
+
+            <section class="game-universe">
+                <h2>Univers</h2>
+                <p>{{ game.universe_description }}</p>
+            </section>
+
+            <section class="game-story">
+                <h2>Histoire</h2>
+                <div class="story-act">
+                    <h3>Acte 1</h3>
+                    <p>{{ game.story_act_1 }}</p>
+                </div>
+                <div class="story-act">
+                    <h3>Acte 2</h3>
+                    <p>{{ game.story_act_2 }}</p>
+                </div>
+                <div class="story-act">
+                    <h3>Acte 3</h3>
+                    <p>{{ game.story_act_3 }}</p>
+                </div>
+            </section>
+
+            <section class="game-characters">
+                <h2>Personnages</h2>
+                <div class="character-grid">
+                    {% for character in game.characters.all %}
+                    <div class="character-card">
+                        <h3>{{ character.name }}</h3>
+                        <div class="character-info">
+                            <p class="character-class">{{ character.character_class }}</p>
+                            <p class="character-role">{{ character.narrative_role }}</p>
+                        </div>
+                        <div class="character-background">
+                            <h4>Background</h4>
+                            <p>{{ character.background }}</p>
+                        </div>
+                        <div class="character-gameplay">
+                            <h4>Gameplay</h4>
+                            <p>{{ character.gameplay_description }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="game-locations">
+                <h2>Lieux</h2>
+                <div class="location-grid">
+                    {% for location in game.locations.all %}
+                    <div class="location-card">
+                        <h3>{{ location.name }}</h3>
+                        <p class="location-description">{{ location.description }}</p>
+                        <p class="location-significance">{{ location.significance }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="game-keywords">
+                <h2>Thèmes</h2>
+                <div class="tags">
+                    {% for keyword in game.thematic_keywords.split %}
+                    <span class="keyword-tag">{{ keyword }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="creator-info">
+                <p class="creator">
+                    <span class="creator-label">Créé par:</span>
+                    <span class="creator-name">{{ game.user.username }}</span>
+                </p>
+            </div>
+        </article>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2025 Game Story Generator. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.favorite-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const gameId = this.dataset.gameId;
+                    toggleFavorite(gameId, this);
+                });
+            });
+        });
+
+        function toggleFavorite(gameId, button) {
+            fetch(`/api/toggle-favorite/${gameId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    button.classList.toggle('active', data.is_favorite);
+                });
+        }
+    </script>
+</body>
+
+</html>
