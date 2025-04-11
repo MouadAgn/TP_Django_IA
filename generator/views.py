@@ -1,30 +1,39 @@
+# Django - Gestion des vues, modèles et authentification
 from django.shortcuts import render, get_object_or_404
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import action
-# from rest_framework.parsers import JSONParser
-# from rest_framework.views import APIView
-from .models import GameConcept, Character, Location, Favorite
-from rest_framework import serializers
-import requests
-import os
-from dotenv import load_dotenv
-import time
-from django.shortcuts import get_object_or_404
-import base64
-from io import BytesIO
-from PIL import Image
-from django.conf import settings
-import uuid
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+# Django - Gestion des réponses HTTP
 from django.http import JsonResponse, HttpResponse, FileResponse
+
+# Django - Gestion de la pagination
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+# Django REST Framework - Gestion des API
+from rest_framework import viewsets, status, serializers
+from rest_framework.response import Response
+from rest_framework.decorators import action
+
+# Modèles de l'application
+from .models import GameConcept, Character, Location, Favorite
+
+# Bibliothèques tierces - Gestion des requêtes HTTP et des variables d'environnement
+import requests
+from dotenv import load_dotenv
+
+# Bibliothèques tierces - Gestion des fichiers et des flux
+import os
+import time
+from io import BytesIO
+
+# Bibliothèques tierces - Génération de PDF avec ReportLab
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.units import cm
+
+# Python standard - Gestion des dates et heures
 from datetime import datetime
 
 # Chargement des variables d'environnement
@@ -316,7 +325,7 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             # Parse la réponse
             parsed_response = self.parse_ai_response(generated_text)
             
-            # Génération de l'image avec Stable Diffusion
+            # Génération #image avec Stable Diffusion
             image_prompt = f"A video game scene featuring {game_genre} style, with {visual_atmosphere} atmosphere, including elements of {thematic_keywords}"
             image_api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
             image_headers = {
@@ -325,8 +334,8 @@ Assure-toi de suivre exactement ce format et de fournir des réponses détaillé
             
             try:
                 # Appel à l'API Stable Diffusion avec retry
-                max_retries = 5  # Augmentation du nombre de tentatives
-                retry_delay = 5  # Augmentation du délai entre les tentatives
+                max_retries = 3  # Augmentation du nombre de tentatives
+                retry_delay = 3  # Augmentation du délai entre les tentatives
                 
                 for attempt in range(max_retries):
                     try:

@@ -7,68 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile - Game Story Generator</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
         rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
-            color: #fff;
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .navbar {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: #fff;
-            text-decoration: none;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .nav-link:hover {
-            color: #00ff9d;
-        }
-
-        .nav-link.active {
-            color: #00ff9d;
-        }
-
-        .nav-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #00ff9d;
-            box-shadow: 0 0 10px #00ff9d;
-        }
-
         .profile-header {
             text-align: center;
             margin: 3rem 0;
@@ -85,13 +28,6 @@
             margin-bottom: 1rem;
             font-size: 2.5rem;
             text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
-        }
-
-        .games-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-            padding: 1rem;
         }
 
         .game-card {
@@ -202,20 +138,6 @@
             margin-bottom: 2rem;
             font-size: 1.1rem;
         }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            .games-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .profile-header h1 {
-                font-size: 2rem;
-            }
-        }
     </style>
 </head>
 
@@ -246,7 +168,7 @@
                     <h2>{{ concept.game_genre }}</h2>
                     <span class="atmosphere-tag">{{ concept.visual_atmosphere }}</span>
                 </div>
-                
+
                 <div class="game-content">
                     <div class="universe-section">
                         <h3>Univers</h3>
@@ -294,7 +216,8 @@
                             </div>
                             <div class="card-actions">
                                 <a href="{% url 'game_detail' concept.id %}" class="details-btn">Voir les détails</a>
-                                <button class="favorite-btn {% if concept.id in favorite_games %}active{% endif %}" data-game-id="{{ concept.id }}">
+                                <button class="favorite-btn {% if concept.id in favorite_games %}active{% endif %}"
+                                    data-game-id="{{ concept.id }}">
                                     <i class="fas fa-heart"></i>
                                 </button>
                             </div>
@@ -320,46 +243,46 @@
     </footer>
 
     <script>
-    function toggleContent(button) {
-        const card = button.closest('.game-card');
-        const content = card.querySelector('.expandable-content');
-        const icon = button.querySelector('i');
-        const text = button.querySelector('span');
-        
-        content.classList.toggle('expanded');
-        
-        if (content.classList.contains('expanded')) {
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-up');
-            text.textContent = 'Voir moins';
-        } else {
-            icon.classList.remove('fa-chevron-up');
-            icon.classList.add('fa-chevron-down');
-            text.textContent = 'Voir plus';
-        }
-    }
+        function toggleContent(button) {
+            const card = button.closest('.game-card');
+            const content = card.querySelector('.expandable-content');
+            const icon = button.querySelector('i');
+            const text = button.querySelector('span');
 
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.favorite-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const gameId = this.dataset.gameId;
-                toggleFavorite(gameId, this);
+            content.classList.toggle('expanded');
+
+            if (content.classList.contains('expanded')) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                text.textContent = 'Voir moins';
+            } else {
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                text.textContent = 'Voir plus';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.favorite-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const gameId = this.dataset.gameId;
+                    toggleFavorite(gameId, this);
+                });
             });
         });
-    });
 
-    function toggleFavorite(gameId, button) {
-        fetch(`/api/toggle-favorite/${gameId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            button.classList.toggle('active', data.is_favorite);
-        });
-    }
+        function toggleFavorite(gameId, button) {
+            fetch(`/api/toggle-favorite/${gameId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    button.classList.toggle('active', data.is_favorite);
+                });
+        }
     </script>
 </body>
 

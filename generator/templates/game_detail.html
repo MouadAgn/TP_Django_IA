@@ -1,13 +1,17 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ game.game_genre }} - Game Story Generator</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <nav class="main-nav">
         <div class="nav-container">
@@ -32,6 +36,12 @@
                     </button>
                 </div>
             </header>
+
+            <div class="game-universe-image">
+                {% if game.image %}
+                <img src="{{ game.image.url }}" alt="Universe of {{ game.game_genre }}" class="universe-image">
+                {% endif %}
+            </div>
 
             <section class="game-universe">
                 <h2>Univers</h2>
@@ -114,92 +124,29 @@
         </div>
     </footer>
 
-    <style>
-        .creator-info {
-            margin-top: 2rem;
-            padding: 1rem;
-            background: rgba(0, 255, 157, 0.1);
-            border-radius: 10px;
-            border-left: 4px solid #00ff9d;
-        }
-
-        .creator {
-            margin: 0;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .creator-label {
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 300;
-        }
-
-        .creator-name {
-            color: #00ff9d;
-            font-weight: 700;
-            font-family: 'Orbitron', sans-serif;
-            letter-spacing: 1px;
-            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
-        }
-
-        .creator-name:hover {
-            color: #fff;
-            text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
-            transition: all 0.3s ease;
-        }
-
-        .header-content {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .favorite-btn {
-            background: none;
-            border: none;
-            color: rgba(255, 77, 77, 0.5);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 0.5rem;
-            border-radius: 50%;
-        }
-
-        .favorite-btn:hover {
-            transform: scale(1.2);
-            color: #ff4d4d;
-            background: rgba(255, 77, 77, 0.1);
-        }
-
-        .favorite-btn.active {
-            color: #ff4d4d;
-        }
-    </style>
-
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.favorite-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const gameId = this.dataset.gameId;
-                toggleFavorite(gameId, this);
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.favorite-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const gameId = this.dataset.gameId;
+                    toggleFavorite(gameId, this);
+                });
             });
         });
-    });
 
-    function toggleFavorite(gameId, button) {
-        fetch(`/api/toggle-favorite/${gameId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            button.classList.toggle('active', data.is_favorite);
-        });
-    }
+        function toggleFavorite(gameId, button) {
+            fetch(`/api/toggle-favorite/${gameId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([\w-]+)/)[1],
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    button.classList.toggle('active', data.is_favorite);
+                });
+        }
     </script>
 </body>
-</html> 
+
+</html>

@@ -71,17 +71,19 @@ body {
 /* Container principal */
 .container {
     max-width: 1200px;
-    margin: 2rem auto;
+    margin: 4rem auto;
     padding: 0 var(--spacing);
 }
 
+
 /* Cards des jeux */
 .game-stories {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: calc(100vh - 200px);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
     padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .game-card {
@@ -399,69 +401,66 @@ body {
     color: var(--text-secondary);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .nav-container {
-        flex-direction: column;
-        text-align: center;
-        gap: 1rem;
-    }
-
-    .nav-links {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .nav-links a {
-        margin: 0;
-        display: block;
-    }
-
-    .game-stories {
-        grid-template-columns: 1fr;
-    }
-
-    .form-actions {
-        flex-direction: column;
-    }
-
-    .generate-form-section {
-        padding: 1rem;
-    }
-
-    .game-card {
-        padding: 1.5rem;
-        max-width: 500px;
-    }
-
-    .game-header h2 {
-        font-size: 1.6rem;
-    }
+.creator-info {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(0, 255, 157, 0.1);
+    border-radius: 10px;
+    border-left: 4px solid #00ff9d;
 }
 
-@media (max-width: 480px) {
-    :root {
-        --spacing: 10px;
-    }
+.creator {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 
-    .container {
-        margin: 1rem auto;
-    }
+.creator-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 300;
+}
 
-    .game-card {
-        padding: 1rem;
-        max-width: 400px;
-    }
+.creator-name {
+    color: #00ff9d;
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+}
 
-    .game-header h2 {
-        font-size: 1.4rem;
-    }
+.creator-name:hover {
+    color: #fff;
+    text-shadow: 0 0 15px rgba(0, 255, 157, 0.5);
+    transition: all 0.3s ease;
+}
 
-    .character-list,
-    .location-list {
-        flex-direction: column;
-    }
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.favorite-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 77, 77, 0.5);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0.5rem;
+    border-radius: 50%;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.2);
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+}
+
+.favorite-btn.active {
+    color: #ff4d4d;
 }
 
 /* Animations */
@@ -470,6 +469,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -486,6 +486,24 @@ body {
     border-radius: var(--border-radius);
     padding: 2rem;
     margin-bottom: 2rem;
+}
+
+.game-universe-image {
+    height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.universe-image {
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    transition: transform 0.3s ease;
+}
+
+.universe-image:hover {
+    transform: scale(1.05);
 }
 
 .game-detail-header {
@@ -593,33 +611,6 @@ body {
     text-align: center;
 }
 
-/* Responsive pour la page de détail */
-@media (max-width: 768px) {
-    .game-detail {
-        padding: 1rem;
-    }
-
-    .game-detail-header h1 {
-        font-size: 2rem;
-    }
-
-    .character-grid,
-    .location-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-    .game-detail-header h1 {
-        font-size: 1.5rem;
-    }
-
-    .story-act,
-    .character-card,
-    .location-card {
-        padding: 1rem;
-    }
-}
 
 /* Messages d'erreur */
 .error-message {
@@ -687,6 +678,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -703,30 +695,6 @@ body {
         width: 50px;
         height: 50px;
         font-size: 1.2rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .pagination {
-        padding: 0 1rem;
-    }
-
-    .pagination-arrow {
-        width: 45px;
-        height: 45px;
-        font-size: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .pagination {
-        padding: 0 0.5rem;
-    }
-
-    .pagination-arrow {
-        width: 40px;
-        height: 40px;
-        font-size: 0.9rem;
     }
 }
 
@@ -899,36 +867,10 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-@media (max-width: 480px) {
-    .success-message {
-        padding: 1.5rem;
-    }
-
-    .success-icon {
-        font-size: 2.5rem;
-    }
-
-    .success-message h2 {
-        font-size: 1.3rem;
-    }
-
-    .success-message p {
-        font-size: 1rem;
-    }
-
-    .success-actions {
-        flex-direction: column;
-    }
-
-    .success-btn {
-        width: 100%;
-        text-align: center;
     }
 }
 
@@ -984,16 +926,32 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Animation pour les messages */
 @keyframes fadeInOut {
-    0% { opacity: 0; }
-    20% { opacity: 1; }
-    80% { opacity: 1; }
-    100% { opacity: 0; }
+    0% {
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
 
 #loading-messages {
@@ -1070,36 +1028,11 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+    0% {
+        transform: rotate(0deg);
+    }
 
-/* Responsive design pour l'alerte */
-@media (max-width: 768px) {
-    .loading-alert {
-        width: calc(100% - 40px);
-        top: auto;
-        bottom: 20px;
-        right: 20px;
-        left: 20px;
+    100% {
+        transform: rotate(360deg);
     }
 }
-
-@media (max-width: 480px) {
-    .loading-alert {
-        padding: 15px;
-    }
-
-    .loading-alert-header h3 {
-        font-size: 1.1rem;
-    }
-
-    .loading-alert-body p {
-        font-size: 0.9rem;
-    }
-
-    .spinner {
-        width: 20px;
-        height: 20px;
-    }
-} 
